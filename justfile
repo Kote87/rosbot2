@@ -10,6 +10,8 @@ alias husarnet := connect-husarnet
 alias flash := flash-firmware
 [private]
 alias rosbot := start-rosbot
+[private]
+alias start := start-rosbot
 
 [private]
 gazebo: (start-simulation "gazebo")

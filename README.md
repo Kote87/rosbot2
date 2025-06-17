@@ -40,6 +40,7 @@ Available recipes:
     sync hostname="${ROBOT_NAMESPACE}" password="husarion" # Copy repo content to remote host with 'rsync' and watch for changes
     flash-firmware     # flash the proper firmware for STM32 microcontroller in ROSbot XL
     start-rosbot       # start containers on a physical ROSbot XL
+    start              # same as 'start-rosbot'
     start-simulation engine="gazebo" # start the simulation (available options: gazebo, webots)
     restart-navigation # Restart the Nav2 container
 ```
@@ -109,8 +110,12 @@ To ensure proper user configuration, review the content of the `.env` file and s
 
    ```bash
    just start-rosbot
-   # or "just rosbot"
+   # or simply "just start" or "just rosbot"
    ```
+
+   The `explore_lite` node is built from the
+   [m-explore-ros2](https://github.com/robo-friends/m-explore-ros2) repository
+   and launches automatically with this command.
 
 ### 🚗 Step 5: Control the ROSbot from a Web Browser
 
