@@ -61,16 +61,12 @@ services:
     restart: unless-stopped
     command: ros2 launch foxglove_bridge foxglove_bridge_launch.xml port:=8765 capabilities:=[clientPublish,connectionGraph,assets]
 
-  explore_lite:                        # ← misma columna que “foxglove-ds”
-    image: ros:humble-ros-base
+  explore_lite:
+    build:
+      context: .
+      dockerfile: Dockerfile.explore_lite
     network_mode: host
     restart: unless-stopped
-    command: >
-      bash -c "
-        apt update &&
-        apt install -y ros-humble-explore-lite &&
-        ros2 launch explore_lite explore.launch.py
-      "
     depends_on:
       navigation:
         condition: service_healthy
