@@ -26,8 +26,10 @@ services:
     image: husarion/navigation2:humble-1.1.12-20240123
     restart: unless-stopped
     depends_on:
-      rplidar: { condition: service_healthy }
-      rosbot: { condition: service_healthy }
+      rplidar:
+        condition: service_healthy
+      rosbot:
+        condition: service_healthy
     volumes:
       - ./config/nav2_${CONTROLLER:-rpp}_params.yaml:/params.yaml
       - ./maps:/maps
@@ -59,7 +61,7 @@ services:
     restart: unless-stopped
     command: ros2 launch foxglove_bridge foxglove_bridge_launch.xml port:=8765 capabilities:=[clientPublish,connectionGraph,assets]
 
- explore_lite:
+  explore_lite:                        # ← misma columna que “foxglove-ds”
     image: ros:humble-ros-base
     network_mode: host
     restart: unless-stopped
@@ -70,4 +72,6 @@ services:
         ros2 launch explore_lite explore.launch.py
       "
     depends_on:
-      navigation: { condition: service_healthy }
+      navigation:
+        condition: service_healthy
+
