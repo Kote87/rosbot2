@@ -1,0 +1,60 @@
+services:
+
+  rosbot:
+    image: husarion/rosbot-xl:humble-0.10.0-20240202
+    restart: unless-stopped
+    command: ros2 launch rosbot_xl_bringup bringup.launch.py mecanum:=${MECANUM:-True}
+
+  microros:
+    image: husarion/micro-ros-agent:humble-3.1.3-20240126
+    restart: unless-stopped
+    ports:
+      - 8888:8888/udp
+    command: ros2 run micro_ros_agent micro_ros_agent udp4 --port 8888
+
+  rplidar:
+    image: husarion/rplidar:humble-1.0.1-20240104
+    restart: unless-stopped
+    devices:
+      - /dev/ttyRPLIDAR:/dev/ttyUSB0
+    command: >
+      ros2 launch /husarion_utils/rplidar.launch.py
+        serial_baudrate:=${LIDAR_BAUDRATE:-256000}
+        serial_port:=/dev/ttyUSB0
+
+  navigation:
+    image: husarion/navigation2:humble-1.1.12-20240123
+    restart: unless-stopped
+    depends_on:
+      rplidar: { condition: service_healthy }
+      rosbot: { condition: service_healthy }
+    volumes:
+      - ./config/nav2_${CONTROLLER:-rpp}_params.yaml:/params.yaml
+      - ./maps:/maps
+    command: >
+      ros2 launch /husarion_utils/bringup_launch.py
+        slam:=${SLAM:-True}
+        params_file:=/params.yaml
+        map:=/maps/map.yaml
+        use_sim_time:=False
+
+  foxglove:
+    image: husarion/foxglove:1.84.0
+    restart: unless-stopped
+    ports:
+      - 8080:8080
+      - 8765:8765
+    volumes:
+      - ./config/layout.json:/foxglove/default-layout.json
+    environment:
+      - DS_TYPE=foxglove-websocket
+      - DS_PORT=8765
+      - DS_HOST=foxglove-ds
+      - UI_PORT=8080
+      - DISABLE_CACHE=true
+      - DISABLE_INTERACTION=false
+
+  foxglove-ds:
+    image: husarion/foxglove-bridge:humble-0.7.3-20240108
+    restart: unless-stopped
+    command: ros2 launch foxglove_bridge foxglove_bridge_launch.xml port:=8765 capabilities:=[clientPublish,connectionGraph,assets]
