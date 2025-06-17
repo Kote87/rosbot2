@@ -58,3 +58,16 @@ services:
     image: husarion/foxglove-bridge:humble-0.7.3-20240108
     restart: unless-stopped
     command: ros2 launch foxglove_bridge foxglove_bridge_launch.xml port:=8765 capabilities:=[clientPublish,connectionGraph,assets]
+
+ explore_lite:
+    image: ros:humble-ros-base
+    network_mode: host
+    restart: unless-stopped
+    command: >
+      bash -c "
+        apt update &&
+        apt install -y ros-humble-explore-lite &&
+        ros2 launch explore_lite explore.launch.py
+      "
+    depends_on:
+      navigation: { condition: service_healthy }
