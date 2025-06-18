@@ -58,7 +58,10 @@ services:
     image: husarion/foxglove-bridge:humble-0.7.3-20240108
     restart: unless-stopped
     network_mode: host
-    command: ros2 launch foxglove_bridge foxglove_bridge_launch.xml port:=8765 capabilities:=[clientPublish,connectionGraph,assets]
+    command: >
+      ros2 launch foxglove_bridge foxglove_bridge_launch.xml
+        port:=8765
+        capabilities:=[clientPublish,connectionGraph,assets]
 
   explore_lite:
     build:
