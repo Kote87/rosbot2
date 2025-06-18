@@ -25,7 +25,10 @@ RUN . /opt/ros/humble/setup.sh && \
     rm -rf /var/lib/apt/lists/* && \
     colcon build --symlink-install
 
-# Default command runs explore lite
+# Copy default parameters for explore_lite
+COPY config/explore_params.yaml /opt/explore_ws/
+
+# Default command runs explore lite with custom parameters
 CMD bash -c "source /opt/ros/humble/setup.bash && \
              source /opt/explore_ws/install/setup.bash && \
-             ros2 launch explore_lite explore.launch.py"
+             ros2 launch explore_lite explore.launch.py params_file:=/opt/explore_ws/explore_params.yaml"

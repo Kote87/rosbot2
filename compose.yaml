@@ -67,6 +67,8 @@ services:
       dockerfile: Dockerfile.explore_lite
     network_mode: host
     restart: unless-stopped
+    volumes:
+      - ./config/explore_params.yaml:/opt/explore_ws/explore_params.yaml:ro
     depends_on:
       navigation:
         condition: service_healthy
