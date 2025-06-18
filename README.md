@@ -113,9 +113,14 @@ To ensure proper user configuration, review the content of the `.env` file and s
    # or simply "just start" or "just rosbot"
    ```
 
-   The `explore_lite` node is built from the
-   [m-explore-ros2](https://github.com/robo-friends/m-explore-ros2) repository
-   and launches automatically with this command.
+  The `explore_lite` node is built from the
+  [m-explore-ros2](https://github.com/robo-friends/m-explore-ros2) repository
+  and launches automatically with this command.
+
+   The parameters used by `explore_lite` are stored in
+   `config/explore_params.yaml`.  Edit this file to adjust options such as
+   `planner_frequency` or `progress_timeout` and restart the Compose stack to
+   apply the changes.
 
 ### 🚗 Step 5: Control the ROSbot from a Web Browser
 
