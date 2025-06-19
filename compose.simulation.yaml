@@ -51,5 +51,5 @@ services:
       - DISABLE_INTERACTION=false
 
   foxglove-ds:
-    image: husarion/foxglove-bridge:humble-0.7.3-20240108
+    image: ghcr.io/foxglove/ros-foxglove-bridge:0.3.1-humble
     command: ros2 launch foxglove_bridge foxglove_bridge_launch.xml port:=8765 capabilities:=[clientPublish,connectionGraph,assets]
