@@ -30,7 +30,7 @@ services:
           slam_params_file:=/ros_ws/src/slam_toolbox/config/mapper_params_online_sync.yaml
           use_sim_time:=false"
     depends_on:
-      - rosbot
+      - rosbot               # ← IMPORTANTE: el nombre que SÍ existe
 
   #################################################################
   # 3) Tele-op por teclado  (publica /cmd_vel)
@@ -51,17 +51,17 @@ services:
     depends_on:
       - rosbot
 
-  #################################################################
-  # 4) Foxglove Bridge (WebSocket server)
-  #################################################################
-  foxglove_bridge:
+  # ────────────────────────────────
+  # Puente ROS 2 ⇆ Foxglove WebSocket
+  # ────────────────────────────────
+  foxglove-ws:
     image: ghcr.io/foxglove/foxglove-bridge:latest
     network_mode: host
     privileged: true
     environment:
       - ROS_DOMAIN_ID=0
     depends_on:
-      - rosbot
+      - rosbot               # ← IMPORTANTE: el nombre que SÍ existe
     command: >
       bash -c "
         source /opt/ros/humble/setup.bash &&
