@@ -7,8 +7,12 @@ services:
   #################################################################
   navigation:
     command: ["bash", "-c", "echo 'navigation disabled (teleop mapping)'; sleep infinity"]
+    healthcheck:
+      disable: true
   explore_lite:
     command: ["bash", "-c", "echo 'explore_lite disabled (teleop mapping)'; sleep infinity"]
+    healthcheck:
+      disable: true
 
   #################################################################
   # 2) Slam-Toolbox  (online_sync, construye /map)
