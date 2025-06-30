@@ -5,7 +5,9 @@ services:
   #################################################################
   # 1) Desactivar exploración autónoma (explore_lite/Nav2)
   #################################################################
-  rosbot-navigation:
+  navigation:
+    command: ["bash", "-c", "echo 'navigation disabled (teleop mapping)'; sleep infinity"]
+  explore_lite:
     command: ["bash", "-c", "echo 'explore_lite disabled (teleop mapping)'; sleep infinity"]
 
   #################################################################
@@ -24,7 +26,7 @@ services:
           slam_params_file:=/ros_ws/src/slam_toolbox/config/mapper_params_online_sync.yaml
           use_sim_time:=false"
     depends_on:
-      - rosbot-sensors
+      - rosbot
 
   #################################################################
   # 3) Tele-op por teclado  (publica /cmd_vel)
@@ -43,5 +45,5 @@ services:
         ros2 run teleop_twist_keyboard teleop_twist_keyboard
           cmd_vel:=/cmd_vel"
     depends_on:
-      - rosbot-sensors
+      - rosbot
 
