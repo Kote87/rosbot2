@@ -150,4 +150,4 @@ teleop:
     @echo "│          A/D = girar;  Q/E = giro suave"
     @echo "│  Salir sin matar:  Ctrl-P  Ctrl-Q"
     @echo "╰───────────────────────────────────────────"
-    docker attach teleop
+    docker attach $(docker compose -f compose.yaml -f docker-compose.override.yml ps -q teleop)
