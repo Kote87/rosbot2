@@ -140,3 +140,14 @@ _install-yq:
         chmod +x /usr/bin/yq
         echo "yq installed successfully!"
     fi
+
+teleop:
+    @echo "Starting sensors + SLAM + teleop…"
+    docker compose up -d
+    @echo ""
+    @echo "╭───────────────────────────────────────────"
+    @echo "│  TELEOP  (W/S = adelante/atrás)"
+    @echo "│          A/D = girar;  Q/E = giro suave"
+    @echo "│  Salir sin matar:  Ctrl-P  Ctrl-Q"
+    @echo "╰───────────────────────────────────────────"
+    docker attach teleop
