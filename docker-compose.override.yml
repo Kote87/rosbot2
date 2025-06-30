@@ -51,3 +51,23 @@ services:
     depends_on:
       - rosbot
 
+  #################################################################
+  # 4) Foxglove Bridge (WebSocket server)
+  #################################################################
+  foxglove_bridge:
+    image: ghcr.io/foxglove/foxglove-bridge:latest
+    network_mode: host
+    privileged: true
+    environment:
+      - ROS_DOMAIN_ID=0
+    depends_on:
+      - rosbot
+    command: >
+      bash -c "
+        source /opt/ros/humble/setup.bash &&
+        ros2 launch foxglove_bridge foxglove_bridge_launch.xml
+          address:=0.0.0.0
+          port:=8765
+          use_compressed:=true
+          advertise_tfs:=true"
+
