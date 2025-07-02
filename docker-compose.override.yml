@@ -52,10 +52,22 @@ services:
   # ────────────────────────────────
   # Puente ROS 2 ⇆ Foxglove WebSocket
   # ────────────────────────────────
-  foxglove-ws:
+  # UI web: sólo 8080 -> host
+  foxglove:
+    network_mode: bridge
+    ports:
+      - "8080:8080"              #  <-- elimina 8765:8765 si estaba
+    environment:
+      - DS_HOST=foxglove-ds      #  (ya estaba así)
+      - DS_PORT=8765
+
+  # Bridge ROS <-> WebSocket
+  foxglove-ds:
     image: husarion/foxglove-bridge:humble-0.7.3-20240108   # ← trae el paquete
-    network_mode: host
+    network_mode: bridge
     privileged: true
+    ports:
+      - "8765:8765"              # expone 8765 al host
     environment:
       - ROS_DOMAIN_ID=0
     depends_on:
@@ -66,5 +78,4 @@ services:
         address:=0.0.0.0
         port:=8765
         use_compressed:=true
-        advertise_tfs:=true
 
