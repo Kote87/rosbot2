@@ -6,9 +6,9 @@ services:
   # 1) Desactivar exploración autónoma (explore_lite/Nav2)
   #################################################################
   navigation:
-    command: ["bash", "-c", "echo 'navigation disabled (teleop mapping)'; sleep infinity"]
+    command: ["bash","-c","echo explore_lite disabled by override; sleep infinity"]
     healthcheck:
-      test: ["CMD", "true"]
+      test: ["CMD","true"]
   explore_lite:
     command: ["bash", "-c", "echo 'explore_lite disabled (teleop mapping)'; sleep infinity"]
     healthcheck:
@@ -36,11 +36,11 @@ services:
   # 3) Tele-op por teclado  (publica /cmd_vel)
   #################################################################
   teleop:
-    image: husarion/rosbot-xl:humble-0.10.0-20240202
+    image: husarion/rosbot:humble-latest
     network_mode: host
     privileged: true
-    tty: true
     stdin_open: true
+    tty: true
     environment:
       - ROS_DOMAIN_ID=0
     command: >
@@ -48,20 +48,19 @@ services:
         source /opt/ros/humble/setup.bash &&
         ros2 run teleop_twist_keyboard teleop_twist_keyboard
           cmd_vel:=/cmd_vel"
-    depends_on:
-      - rosbot
 
   # ────────────────────────────────
   # Puente ROS 2 ⇆ Foxglove WebSocket
   # ────────────────────────────────
   foxglove-ws:
-    image: ghcr.io/foxglove/foxglove-bridge:latest
+    image: husarion/rosbot:humble-latest
     network_mode: host
     privileged: true
     environment:
       - ROS_DOMAIN_ID=0
     depends_on:
-      - rosbot               # ← IMPORTANTE: el nombre que SÍ existe
+      rosbot:
+        condition: service_healthy
     command: >
       bash -c "
         source /opt/ros/humble/setup.bash &&
