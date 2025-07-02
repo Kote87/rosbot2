@@ -1,0 +1,4 @@
+services:
+  foxglove:
+    image: husarion/foxglove:studio          # 1.94.0 con LaserScan
+
