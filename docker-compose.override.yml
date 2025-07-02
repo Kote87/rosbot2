@@ -1,38 +1,52 @@
-# docker-compose.override.yml   (solo lo que cambias)
 version: "3.8"
 
 services:
-  # 1) Rosbot: arrancar drivers SIN cámara OAK
+  # -------------------------------------------------
+  # 1) rosbot: drivers sin cámara OAK
+  # -------------------------------------------------
   rosbot:
     command: >
-      ros2 launch rosbot_xl_bringup bringup.launch.py
-        mecanum:=${MECANUM:-True}   # o False si es Omni
-        enable_oak:=false           # ← DESACTIVA la cámara
+      bash -c "
+        source /opt/ros/humble/setup.bash &&
+        ros2 launch rosbot_xl_bringup bringup.launch.py
+          mecanum:=${MECANUM:-True}
+          enable_oak:=false
+      "
 
-  # 2) Tele‑op por teclado
+  # -------------------------------------------------
+  # 2) teleop_twist_keyboard
+  # -------------------------------------------------
   teleop:
     image: husarion/rosbot-xl:humble-0.10.0-20240202
     network_mode: host
     privileged: true
     stdin_open: true
     tty: true
-    environment: [ ROS_DOMAIN_ID=0 ]
+    environment:
+      - ROS_DOMAIN_ID=0
     depends_on:
-      rosbot: { condition: service_healthy }
+      rosbot:
+        condition: service_healthy
     command: >
-      bash -c "source /opt/ros/humble/setup.bash &&
-               ros2 run teleop_twist_keyboard teleop_twist_keyboard
-                 cmd_vel:=/cmd_vel"
+      bash -c "
+        source /opt/ros/humble/setup.bash &&
+        ros2 run teleop_twist_keyboard teleop_twist_keyboard
+          cmd_vel:=/cmd_vel
+      "
 
-  # 3) Foxglove bridge con más canales/buffer (opcional pero recomendado)
+  # -------------------------------------------------
+  # 3) foxglove‑bridge con buffer/canales ampliados
+  # -------------------------------------------------
   foxglove-ds:
-    image: husarion/foxglove-bridge:humble-0.8.7      # ≥0.8.6
+    image: husarion/foxglove-bridge:humble-0.8.7
     command: >
       foxglove_bridge
         --send-buffer-bytes 33554432
         --max-channels 256
         --ignore-unknown-types
 
-  # 4) Congelar explore_lite (por si Husarion lo revive)
+  # -------------------------------------------------
+  # 4) Mantener explore_lite dormido
+  # -------------------------------------------------
   explore_lite:
-    command: ["bash","-c","echo 'explore_lite disabled'; sleep infinity"
+    command: ["bash", "-c", "echo 'explore_lite disabled'; sleep infinity"]
