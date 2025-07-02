@@ -4,7 +4,7 @@ services:
     # lanza bringup sin cámara
     command: >
       ros2 launch rosbot_xl_bringup bringup.launch.py
-        mecanum:=true enable_oak:=false
+        mecanum:=True enable_oak:=False
     restart: on-failure
 
   # Arrancamos sólo lo imprescindible
