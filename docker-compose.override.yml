@@ -53,20 +53,18 @@ services:
   # Puente ROS 2 ⇆ Foxglove WebSocket
   # ────────────────────────────────
   foxglove-ws:
-    image: husarion/rosbot-xl:humble-0.10.0-20240202
+    image: husarion/foxglove-bridge:humble-0.7.3-20240108   # ← trae el paquete
     network_mode: host
     privileged: true
     environment:
       - ROS_DOMAIN_ID=0
     depends_on:
-      rosbot:
+      rosbot:                       # nombre exacto del servicio que ya existe
         condition: service_healthy
     command: >
-      bash -c "
-        source /opt/ros/humble/setup.bash &&
-        ros2 launch foxglove_bridge foxglove_bridge_launch.xml
-          address:=0.0.0.0
-          port:=8765
-          use_compressed:=true
-          advertise_tfs:=true"
+      ros2 launch foxglove_bridge foxglove_bridge_launch.xml
+        address:=0.0.0.0
+        port:=8765
+        use_compressed:=true
+        advertise_tfs:=true
 
