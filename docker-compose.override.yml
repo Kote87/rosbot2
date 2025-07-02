@@ -54,6 +54,7 @@ services:
   # ────────────────────────────────
   # UI web: sólo 8080 -> host
   foxglove:
+    image: husarion/foxglove:latest
     network_mode: bridge
     ports:
       - "8080:8080"              #  <-- elimina 8765:8765 si estaba
