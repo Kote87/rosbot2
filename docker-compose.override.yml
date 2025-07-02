@@ -1,40 +1,11 @@
-# docker-compose.override.yml
 version: "3.5"
 
 services:
-  #################################################################
-  # 1) Desactivar exploración autónoma (explore_lite/Nav2)
-  #################################################################
+  # 1) Dormimos explore_lite / navigation cuando uses “just teleop”
   navigation:
-    command: ["bash","-c","echo explore_lite disabled by override; sleep infinity"]
-    healthcheck:
-      test: ["CMD","true"]
-  explore_lite:
-    command: ["bash", "-c", "echo 'explore_lite disabled (teleop mapping)'; sleep infinity"]
-    healthcheck:
-      test: ["CMD", "true"]
+    command: ["bash","-c","echo navigation dormido; sleep infinity"]
 
-  #################################################################
-  # 2) Slam-Toolbox  (online_sync, construye /map)
-  #################################################################
-  slam_toolbox:
-    image: husarion/rosbot-xl:humble-0.10.0-20240202
-    network_mode: host
-    privileged: true
-    environment:
-      - ROS_DOMAIN_ID=0
-    command: >
-      bash -c "
-        source /opt/ros/humble/setup.bash &&
-        ros2 launch slam_toolbox online_sync_launch.py
-          slam_params_file:=/ros_ws/src/slam_toolbox/config/mapper_params_online_sync.yaml
-          use_sim_time:=false"
-    depends_on:
-      - rosbot               # ← IMPORTANTE: el nombre que SÍ existe
-
-  #################################################################
-  # 3) Tele-op por teclado  (publica /cmd_vel)
-  #################################################################
+  # 2) Tele-op teclado
   teleop:
     image: husarion/rosbot-xl:humble-0.10.0-20240202
     network_mode: host
@@ -43,28 +14,19 @@ services:
     tty: true
     environment:
       - ROS_DOMAIN_ID=0
+    depends_on:
+      rosbot:
+        condition: service_healthy
     command: >
       bash -c "
         source /opt/ros/humble/setup.bash &&
         ros2 run teleop_twist_keyboard teleop_twist_keyboard
           cmd_vel:=/cmd_vel"
 
-  # ────────────────────────────────
-  # Puente ROS 2 ⇆ Foxglove WebSocket
-  # ────────────────────────────────
-  foxglove-ws:
-    image: husarion/foxglove-bridge:humble-0.7.3-20240108   # ← trae el paquete
-    network_mode: host
-    privileged: true
+  # 3) Aseguramos que el bridge existente foxglove-ds vea ROS 2
+  foxglove-ds:
     environment:
       - ROS_DOMAIN_ID=0
     depends_on:
-      rosbot:                       # nombre exacto del servicio que ya existe
+      rosbot:
         condition: service_healthy
-    command: >
-      ros2 launch foxglove_bridge foxglove_bridge_launch.xml
-        address:=0.0.0.0
-        port:=8765
-        use_compressed:=true
-        advertise_tfs:=true
-
