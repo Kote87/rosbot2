@@ -50,7 +50,7 @@ services:
       - DISABLE_INTERACTION=false
 
   foxglove_bridge:
-    image: husarion/foxglove-bridge:humble-0.8.6-20240531
+    image: ghcr.io/foxglove/ros-foxglove-bridge:0.8.6
     command: >
       foxglove_bridge
         --address 0.0.0.0
