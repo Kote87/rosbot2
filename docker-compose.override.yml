@@ -46,7 +46,6 @@ services:
     image: husarion/foxglove-bridge:humble-0.7.3-20240108
     network_mode: bridge
     privileged: true
-    ports: [ "8765:8765" ]
     environment: [ ROS_DOMAIN_ID=0 ]
     depends_on:
       rosbot:  { condition: service_started }
