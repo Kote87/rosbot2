@@ -1,52 +1,63 @@
 version: "3.8"
 
 services:
-  # -------------------------------------------------
-  # 1) rosbot: drivers sin cámara OAK
-  # -------------------------------------------------
+  ###############################################################
+  # 1) rosbot: drivers SIN cámara OAK
+  ###############################################################
   rosbot:
     command: >
-      bash -c "
-        source /opt/ros/humble/setup.bash &&
-        ros2 launch rosbot_xl_bringup bringup.launch.py
-          mecanum:=${MECANUM:-True}
-          enable_oak:=false
-      "
+      ros2 launch rosbot_xl_bringup bringup.launch.py
+        mecanum:=${MECANUM:-True}
+        enable_oak:=false          # ← cámara apagada
 
-  # -------------------------------------------------
-  # 2) teleop_twist_keyboard
-  # -------------------------------------------------
+  ###############################################################
+  # 2) teleop_twist_keyboard (mover el robot)
+  ###############################################################
   teleop:
     image: husarion/rosbot-xl:humble-0.10.0-20240202
     network_mode: host
     privileged: true
     stdin_open: true
     tty: true
-    environment:
-      - ROS_DOMAIN_ID=0
+    environment: [ ROS_DOMAIN_ID=0 ]
     depends_on:
-      rosbot:
-        condition: service_healthy
+      rosbot: { condition: service_started }   # tolera que rosbot no tenga healthcheck
     command: >
-      bash -c "
-        source /opt/ros/humble/setup.bash &&
-        ros2 run teleop_twist_keyboard teleop_twist_keyboard
-          cmd_vel:=/cmd_vel
-      "
+      bash -c "source /opt/ros/humble/setup.bash &&
+               ros2 run teleop_twist_keyboard teleop_twist_keyboard
+                 cmd_vel:=/cmd_vel"
 
-  # -------------------------------------------------
-  # 3) foxglove‑bridge con buffer/canales ampliados
-  # -------------------------------------------------
+  ###############################################################
+  # 3) Navigation 2 (activo: genera /map)
+  ###############################################################
+  # ‑‑ no lo tocamos: se mantiene igual que en compose.yaml
+  #   (si quieres usar otros parámetros de SLAM, cámbialos ahí)
+
+  ###############################################################
+  # 4) explore_lite dormido (evita exploración autónoma)
+  ###############################################################
+  explore_lite:
+    command: [ "bash","-c","echo 'explore_lite disabled'; sleep infinity" ]
+
+  ###############################################################
+  # 5) Foxglove‑bridge con buffer / canales amplios
+  ###############################################################
   foxglove-ds:
-    image: husarion/foxglove-bridge:humble-0.8.7
+    image: husarion/foxglove-bridge:humble-0.8.7          # versión más reciente
+    network_mode: bridge
+    privileged: true
+    ports: [ "8765:8765" ]
+    environment: [ ROS_DOMAIN_ID=0 ]
+    depends_on:
+      rosbot:  { condition: service_started }
+      rplidar: { condition: service_healthy }
     command: >
       foxglove_bridge
-        --send-buffer-bytes 33554432
-        --max-channels 256
-        --ignore-unknown-types
+        --send-buffer-bytes 67108864      # 64 MB  (sube si quieres más)
+        --max-channels 512                # 512 canales
+        --ignore-unknown-types            # descarta tipos exóticos
 
-  # -------------------------------------------------
-  # 4) Mantener explore_lite dormido
-  # -------------------------------------------------
-  explore_lite:
-    command: ["bash", "-c", "echo 'explore_lite disabled'; sleep infinity"]
+  ###############################################################
+  # 6) Foxglove Studio (UI) – sin cambios
+  ###############################################################
+  # foxglove  se queda tal y como está en tu compose.yaml
