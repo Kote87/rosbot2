@@ -43,7 +43,7 @@ services:
   # 5) Foxglove‑bridge con buffer / canales amplios
   ###############################################################
   foxglove-ds:
-    image: husarion/foxglove-bridge:humble-0.8.7          # versión más reciente
+    image: husarion/foxglove-bridge:humble-0.7.3-20240108
     network_mode: bridge
     privileged: true
     ports: [ "8765:8765" ]
