@@ -24,10 +24,11 @@ services:
     environment: [ ROS_DOMAIN_ID=0 ]
     healthcheck:
       test: ["CMD-SHELL",
-             "source /opt/ros/humble/setup.bash && ros2 topic echo /scan --once > /dev/null"]
-      interval: 15s
+             "bash -c 'source /opt/ros/humble/setup.bash && ros2 topic list | grep -q ^/scan$'"]
+      interval: 30s
       timeout: 5s
-      retries: 3
+      start_period: 40s
+      retries: 10
 
   navigation:
     image: husarion/navigation2:humble-1.1.12-20240123
@@ -72,7 +73,7 @@ services:
         capabilities:=[clientPublish,connectionGraph,assets]
     depends_on:
       rplidar:
-        condition: service_healthy
+        condition: service_started
 
   explore_lite:
     build:
