@@ -43,7 +43,7 @@ services:
       - ./config/layout.json:/foxglove/default-layout.json
     environment:
       - DS_TYPE=foxglove-websocket
-      - DS_PORT=8765
+      - DS_PORT=8766
       - DS_HOST=foxglove_bridge
       - UI_PORT=8080
       - DISABLE_CACHE=true
@@ -54,5 +54,5 @@ services:
     command: >
       ros2 launch foxglove_bridge foxglove_bridge_launch.xml
         address:=0.0.0.0
-        port:=8765
+        port:=8766
         use_compressed:=true
