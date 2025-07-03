@@ -42,15 +42,18 @@ services:
   ###############################################################
   # 5) Foxglove‑bridge con buffer / canales amplios
   ###############################################################
-  foxglove_bridge:
-    image: ghcr.io/foxglove/ros-foxglove-bridge:0.8.6
+  foxglove-ds:
+    image: ghcr.io/foxglove/ros2-bridge:0.8.7
     network_mode: bridge
     privileged: true
-    environment: [ ROS_DOMAIN_ID=0 ]
+    environment:
+      - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
     depends_on:
-      rosbot:  { condition: service_started }
-      rplidar: { condition: service_healthy }
-    # sin 'ports:' (Caddy ya usa 8765)
+      rosbot:
+        condition: service_started
+      rplidar:
+        condition: service_healthy
     command: >
       foxglove_bridge
         --address 0.0.0.0
