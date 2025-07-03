@@ -51,7 +51,7 @@ services:
         capabilities:=[clientPublish,connectionGraph,assets]
     depends_on:
       rplidar:
-        condition: service_healthy
+        condition: service_started
 
   ###############################################################
   # 6) Foxglove Studio (UI) – sin cambios
