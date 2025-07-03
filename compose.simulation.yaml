@@ -37,22 +37,24 @@ services:
 
   foxglove:
     image: husarion/foxglove:1.84.0
+    restart: unless-stopped
     ports:
       - 8080:8080
+      - 8765:8765
     volumes:
       - ./config/layout.json:/foxglove/default-layout.json
     environment:
       - DS_TYPE=foxglove-websocket
-      - DS_PORT=8766
-      - DS_HOST=foxglove_bridge
+      - DS_PORT=8765
+      - DS_HOST=foxglove-ds
       - UI_PORT=8080
       - DISABLE_CACHE=true
       - DISABLE_INTERACTION=false
 
-  foxglove_bridge:
+  foxglove-ds:
     image: husarion/foxglove-bridge:humble-0.7.3-20240108
+    restart: unless-stopped
     command: >
       ros2 launch foxglove_bridge foxglove_bridge_launch.xml
-        address:=0.0.0.0
-        port:=8766
-        use_compressed:=true
+        port:=8765
+        capabilities:=[clientPublish,connectionGraph,assets]

@@ -44,20 +44,11 @@ services:
   ###############################################################
   foxglove-ds:
     image: husarion/foxglove-bridge:humble-0.7.3-20240108
-    network_mode: bridge
-    privileged: true
-    environment:
-      - ROS_DOMAIN_ID=0
-    depends_on:
-      rosbot:
-        condition: service_started
-      rplidar:
-        condition: service_healthy
+    restart: unless-stopped
     command: >
       ros2 launch foxglove_bridge foxglove_bridge_launch.xml
-        address:=0.0.0.0
-        port:=8766
-        use_compressed:=true
+        port:=8765
+        capabilities:=[clientPublish,connectionGraph,assets]
 
   ###############################################################
   # 6) Foxglove Studio (UI) – sin cambios
