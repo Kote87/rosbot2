@@ -49,6 +49,9 @@ services:
       ros2 launch foxglove_bridge foxglove_bridge_launch.xml
         port:=8765
         capabilities:=[clientPublish,connectionGraph,assets]
+    depends_on:
+      rplidar:
+        condition: service_healthy
 
   ###############################################################
   # 6) Foxglove Studio (UI) – sin cambios
