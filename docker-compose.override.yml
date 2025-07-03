@@ -42,8 +42,8 @@ services:
   ###############################################################
   # 5) Foxglove‑bridge con buffer / canales amplios
   ###############################################################
-  foxglove-ds:
-    image: husarion/foxglove-bridge:humble-0.8.6-20240531
+  foxglove_bridge:
+    image: ghcr.io/foxglove/ros-foxglove-bridge:0.8.6
     network_mode: bridge
     privileged: true
     environment: [ ROS_DOMAIN_ID=0 ]

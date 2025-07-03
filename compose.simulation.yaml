@@ -44,11 +44,17 @@ services:
     environment:
       - DS_TYPE=foxglove-websocket
       - DS_PORT=8765
-      - DS_HOST=foxglove-ds
+      - DS_HOST=foxglove_bridge
       - UI_PORT=8080
       - DISABLE_CACHE=true
       - DISABLE_INTERACTION=false
 
-  foxglove-ds:
-    image: husarion/foxglove-bridge:humble-0.7.3-20240108
-    command: ros2 launch foxglove_bridge foxglove_bridge_launch.xml port:=8765 capabilities:=[clientPublish,connectionGraph,assets]
+  foxglove_bridge:
+    image: ghcr.io/foxglove/ros-foxglove-bridge:0.8.6
+    command: >
+      foxglove_bridge
+        --address 0.0.0.0
+        --port 8765
+        --send-buffer-bytes 67108864
+        --max-channels 512
+        --ignore-unknown-types
