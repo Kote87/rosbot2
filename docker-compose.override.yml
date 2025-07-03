@@ -43,7 +43,7 @@ services:
   # 5) Foxglove‑bridge con buffer / canales amplios
   ###############################################################
   foxglove-ds:
-    image: ghcr.io/foxglove/ros2-bridge:0.8.7
+    image: ghcr.io/foxglove/ros-foxglove-bridge:0.8.2
     network_mode: bridge
     privileged: true
     environment:
