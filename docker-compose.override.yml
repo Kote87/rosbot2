@@ -8,7 +8,7 @@ services:
     command: >
       ros2 launch rosbot_xl_bringup bringup.launch.py
         mecanum:=${MECANUM:-True}
-        enable_oak:=false          # ← cámara apagada
+        enable_oak:=false
 
   ###############################################################
   # 2) teleop_twist_keyboard (mover el robot)
@@ -53,9 +53,9 @@ services:
       rplidar: { condition: service_healthy }
     command: >
       foxglove_bridge
-        --send-buffer-bytes 67108864      # 64 MB  (sube si quieres más)
-        --max-channels 512                # 512 canales
-        --ignore-unknown-types            # descarta tipos exóticos
+        --send-buffer-bytes 67108864
+        --max-channels 512
+        --ignore-unknown-types
 
   ###############################################################
   # 6) Foxglove Studio (UI) – sin cambios
