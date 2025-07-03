@@ -21,6 +21,13 @@ services:
       ros2 launch /husarion_utils/rplidar.launch.py
         serial_baudrate:=${LIDAR_BAUDRATE:-1000000}
         serial_port:=/dev/ttyUSB1
+    environment: [ ROS_DOMAIN_ID=0 ]
+    healthcheck:
+      test: ["CMD-SHELL",
+             "source /opt/ros/humble/setup.bash && ros2 topic echo /scan --once > /dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
 
   navigation:
     image: husarion/navigation2:humble-1.1.12-20240123
@@ -63,6 +70,9 @@ services:
       ros2 launch foxglove_bridge foxglove_bridge_launch.xml
         port:=8765
         capabilities:=[clientPublish,connectionGraph,assets]
+    depends_on:
+      rplidar:
+        condition: service_healthy
 
   explore_lite:
     build:
