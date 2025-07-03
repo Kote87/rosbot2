@@ -57,3 +57,17 @@ services:
   # 6) Foxglove Studio (UI) – sin cambios
   ###############################################################
   # foxglove  se queda tal y como está en tu compose.yaml
+
+  ###############################################################
+  # 7) Static transform laser -> camera
+  ###############################################################
+  static_tf:
+    image: husarion/rosbot-xl:humble-0.10.0-20240202
+    network_mode: host
+    restart: unless-stopped
+    environment: [ ROS_DOMAIN_ID=0 ]
+    command: >
+      ros2 run tf2_ros static_transform_publisher
+        0.10 0.00 0.15
+        0 0 0
+        laser oak_rgb_camera_optical_frame
