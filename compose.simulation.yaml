@@ -50,11 +50,9 @@ services:
       - DISABLE_INTERACTION=false
 
   foxglove_bridge:
-    image: ghcr.io/foxglove/ros-foxglove-bridge:0.8.2
+    image: husarion/foxglove-bridge:humble-0.7.3-20240108
     command: >
-      foxglove_bridge
-        --address 0.0.0.0
-        --port 8765
-        --send-buffer-bytes 67108864
-        --max-channels 512
-        --ignore-unknown-types
+      ros2 launch foxglove_bridge foxglove_bridge_launch.xml
+        address:=0.0.0.0
+        port:=8765
+        use_compressed:=true
