@@ -58,16 +58,32 @@ services:
   ###############################################################
   # foxglove  se queda tal y como está en tu compose.yaml
 
-  ###############################################################
-  # 7) Static transform laser -> camera
-  ###############################################################
-  static_tf:
-    image: husarion/rosbot-xl:humble-0.10.0-20240202
-    network_mode: host
-    restart: unless-stopped
-    environment: [ ROS_DOMAIN_ID=0 ]
-    command: >
-      ros2 run tf2_ros static_transform_publisher
-        0.10 0.00 0.15
-        0 0 0
-        laser oak_rgb_camera_optical_frame
+###############################################################
+# 7) Static transform  (láser 20 cm delante de la cámara y 30 cm abajo)
+###############################################################
+static_tf:
+  image: husarion/rosbot-xl:humble-0.10.0-20240202
+  network_mode: host
+  restart: unless-stopped
+  environment: [ ROS_DOMAIN_ID=0 ]          # mismo dominio DDS
+  command: >
+    ros2 run tf2_ros static_transform_publisher
+      -0.20 0.00 0.30                       # x y z  (–20 cm, 0, +30 cm)
+      -1.5708 0 1.5708                      # roll -90°, pitch 0, yaw +90° (rad)
+      laser oak_rgb_camera_optical_frame
+
+###############################################################
+# 8) Overlay  (imagen OAK + puntos RPLIDAR)
+###############################################################
+overlay:
+  image: husarion/rosbot-xl:humble-0.10.0-20240202
+  network_mode: host
+  restart: unless-stopped
+  environment: [ ROS_DOMAIN_ID=0 ]
+  volumes:
+    - ./scripts/lidar_overlay.py:/overlay.py:ro    # monta el script
+  command: >
+    bash -c "pip3 install -q --no-cache-dir scipy &&
+             python3 /overlay.py"
+  depends_on:
+    static_tf: { condition: service_started }
