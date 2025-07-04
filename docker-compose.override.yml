@@ -65,12 +65,11 @@ services:
     image: husarion/rosbot-xl:humble-0.10.0-20240202
     network_mode: host
     restart: unless-stopped
-    environment: [ ROS_DOMAIN_ID=0 ]          # mismo dominio DDS
-    command: >
-      ros2 run tf2_ros static_transform_publisher
-        -0.20 0.00 0.30                       # x y z  (–20 cm, 0, +30 cm)
-        -1.5708 0 1.5708                      # roll -90°, pitch 0, yaw +90° (rad)
-        laser oak_rgb_camera_optical_frame
+    environment: [ ROS_DOMAIN_ID=0 ]
+    command: [ "ros2", "run", "tf2_ros", "static_transform_publisher",
+               "-0.20", "0.00", "0.30",
+               "-1.5708", "0", "1.5708",
+               "laser", "oak_rgb_camera_optical_frame" ]
 
 ###############################################################
 # 8) Overlay  (imagen OAK + puntos RPLIDAR)
@@ -81,9 +80,9 @@ services:
     restart: unless-stopped
     environment: [ ROS_DOMAIN_ID=0 ]
     volumes:
-      - ./scripts/lidar_overlay.py:/overlay.py:ro    # monta el script
-    command: >
-      bash -c "pip3 install -q --no-cache-dir scipy &&
-               python3 /overlay.py"
+      - ./scripts/lidar_overlay.py:/overlay.py:ro
+    command: [ "bash", "-c",
+               "python3 -m pip install -q --no-cache-dir scipy && python3 /overlay.py" ]
     depends_on:
-      static_tf: { condition: service_started }
+      static_tf:
+        condition: service_started
