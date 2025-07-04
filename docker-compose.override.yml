@@ -59,7 +59,7 @@ services:
   # foxglove  se queda tal y como está en tu compose.yaml
 
 ###############################################################
-# 7) Static transform  (láser 20 cm delante de la cámara y 30 cm abajo)
+# 7) Static transform  (láser 20 cm detrás, 30 cm arriba)
 ###############################################################
   static_tf:
     image: husarion/rosbot-xl:humble-0.10.0-20240202
@@ -67,8 +67,8 @@ services:
     restart: unless-stopped
     environment: [ ROS_DOMAIN_ID=0 ]
     command: [ "ros2", "run", "tf2_ros", "static_transform_publisher",
-               "-0.20", "0.00", "0.30",
-               "-1.5708", "0", "1.5708",
+               "-0.20", "0.00", "0.30",        # x  y  z
+               "-1.5708", "0", "1.5708",       # roll  pitch  yaw
                "laser", "oak_rgb_camera_optical_frame" ]
 
 ###############################################################
@@ -81,8 +81,7 @@ services:
     environment: [ ROS_DOMAIN_ID=0 ]
     volumes:
       - ./scripts/lidar_overlay.py:/overlay.py:ro
-    command: [ "bash", "-c",
-               "python3 -m pip install -q --no-cache-dir scipy && python3 /overlay.py" ]
+    command: [ "python3", "/overlay.py" ]     # ← NO usa pip / scipy
     depends_on:
       static_tf:
         condition: service_started
