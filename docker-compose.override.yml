@@ -30,8 +30,9 @@ services:
   ###############################################################
   # 3) Navigation 2 (activo: genera /map)
   ###############################################################
-  # ‑‑ no lo tocamos: se mantiene igual que en compose.yaml
-  #   (si quieres usar otros parámetros de SLAM, cámbialos ahí)
+  navigation:
+    volumes:
+      - ./maps:/home/husarion/rosbotxl/maps
 
   ###############################################################
   # 4) explore_lite dormido (evita exploración autónoma)
