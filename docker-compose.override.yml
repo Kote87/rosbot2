@@ -103,6 +103,13 @@ services:
       - ./maps:/maps:ro
     command: >
       bash -c "
+        # instalar colcon solo la primera vez (1-2 s)
+        if ! command -v colcon &> /dev/null; then
+          apt-get update -qq &&
+          apt-get install -y --no-install-recommends \
+            python3-colcon-common-extensions && \
+          rm -rf /var/lib/apt/lists/*
+        fi &&
         source /opt/ros/humble/setup.bash &&
         cd /opt/ws &&
         colcon build --packages-select rosbotxl_auto &&
