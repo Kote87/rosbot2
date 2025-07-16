@@ -151,3 +151,9 @@ teleop:
     @echo "│  Salir sin matar:  Ctrl-P  Ctrl-Q"
     @echo "╰───────────────────────────────────────────"
     docker attach $(docker compose -f compose.yaml -f docker-compose.override.yml ps -q teleop)
+
+# ejecuta el bucle rectangular autónomo
+auto-loop: _run-as-user
+    #!/bin/bash
+    source ~/rosbotxl/install/setup.bash
+    ros2 launch rosbotxl_auto auto_loop.launch.py
