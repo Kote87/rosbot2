@@ -88,3 +88,23 @@ services:
     depends_on:
       static_tf:
         condition: service_started
+
+  ###############################################################
+  # 9) Rectangular patrol  (auto_loop)
+  ###############################################################
+  auto_loop:
+    image: husarion/navigation2:humble-1.1.12-20240123
+    network_mode: host
+    restart: unless-stopped
+    depends_on:
+      navigation: { condition: service_started }
+    volumes:
+      - ./rosbotxl/rosbotxl_auto:/opt/ws/src/rosbotxl_auto:ro
+      - ./maps:/maps:ro
+    command: >
+      bash -c "
+        source /opt/ros/humble/setup.bash &&
+        cd /opt/ws &&
+        colcon build --packages-select rosbotxl_auto &&
+        source install/setup.bash &&
+        ros2 launch rosbotxl_auto auto_loop.launch.py"

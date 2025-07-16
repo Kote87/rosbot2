@@ -177,14 +177,13 @@ source install/setup.bash
 
 2 · Añadir la “just recipe” sin romper las existentes
 
-Abre justfile y al final añade:
+Abre `justfile` y al final añade:
 
 ```makefile
 # ejecuta el bucle rectangular autónomo
 auto-loop: _run-as-user
     #!/bin/bash
-    source ~/rosbotxl/install/setup.bash
-    ros2 launch rosbotxl_auto auto_loop.launch.py
+    docker compose -f compose.yaml -f docker-compose.override.yml up -d auto_loop
 ```
 
 3 · No toques explore‑lite ni tus YAML actuales
