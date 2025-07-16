@@ -156,3 +156,9 @@ teleop:
 auto-loop: _run-as-user
     #!/bin/bash
     docker compose -f compose.yaml -f docker-compose.override.yml up -d auto_loop
+
+# arranca drivers + navegación con mapa fijo + patrulla rectangular
+run-patrol: _run-as-user
+    #!/bin/bash
+    docker compose -f compose.yaml -f docker-compose.override.yml \
+      up -d rosbot rplidar microros navigation auto_loop

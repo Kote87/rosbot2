@@ -33,6 +33,12 @@ services:
   navigation:
     volumes:
       - ./maps:/home/husarion/rosbotxl/maps
+    command: >
+      ros2 launch /husarion_utils/bringup_launch.py
+        slam:=false
+        params_file:=/params.yaml
+        map:=/maps/mapa_nave.yaml
+        use_sim_time:=False
 
   ###############################################################
   # 4) explore_lite dormido (evita exploración autónoma)
@@ -103,11 +109,9 @@ services:
       - ./maps:/maps:ro
     command: >
       bash -c "
-        # instalar colcon solo la primera vez (1-2 s)
         if ! command -v colcon &> /dev/null; then
           apt-get update -qq &&
-          apt-get install -y --no-install-recommends \
-            python3-colcon-common-extensions && \
+          apt-get install -y python3-colcon-common-extensions &&
           rm -rf /var/lib/apt/lists/*
         fi &&
         source /opt/ros/humble/setup.bash &&
