@@ -155,10 +155,5 @@ teleop:
 # ejecuta el bucle rectangular autónomo
 auto-loop: _run-as-user
     #!/bin/bash
-    docker compose -f compose.yaml -f docker-compose.override.yml up -d auto_loop
-
-# arranca drivers + navegación con mapa fijo + patrulla rectangular
-run-patrol: _run-as-user
-    #!/bin/bash
-    docker compose -f compose.yaml -f docker-compose.override.yml -f docker-compose.patrol.yml \
-      up -d rosbot rplidar microros navigation auto_loop
+    source ~/rosbotxl/install/setup.bash
+    ros2 launch rosbotxl_auto auto_loop.launch.py
