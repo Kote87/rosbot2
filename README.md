@@ -164,5 +164,3 @@ just start-simulation webots
 ### Open Web UI
 
 Then open the **Google Chrome** browser on your laptop and navigate to: http://localhost:8080/ui
-Para un recorrido autónomo con localización global y bucle rectangular revisa [docs/auto_loop_es.md](docs/auto_loop_es.md).
-

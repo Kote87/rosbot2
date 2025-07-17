@@ -4,9 +4,6 @@ services:
     image: husarion/rosbot-xl:humble-0.10.0-20240202
     restart: unless-stopped
     command: ros2 launch rosbot_xl_bringup bringup.launch.py mecanum:=${MECANUM:-True}
-    depends_on:
-      microros:
-        condition: service_started
 
   microros:
     image: husarion/micro-ros-agent:humble-3.1.3-20240126
@@ -24,14 +21,6 @@ services:
       ros2 launch /husarion_utils/rplidar.launch.py
         serial_baudrate:=${LIDAR_BAUDRATE:-1000000}
         serial_port:=/dev/ttyUSB1
-    environment: [ ROS_DOMAIN_ID=0 ]
-    healthcheck:
-      test: ["CMD-SHELL",
-             "bash -c 'source /opt/ros/humble/setup.bash && ros2 topic list | grep -q ^/scan$'"]
-      interval: 30s
-      timeout: 5s
-      start_period: 40s
-      retries: 10
 
   navigation:
     image: husarion/navigation2:humble-1.1.12-20240123
@@ -54,9 +43,7 @@ services:
   foxglove:
     image: husarion/foxglove:1.84.0
     restart: unless-stopped
-    ports:
-      - 8080:8080
-      - 8765:8765
+    network_mode: host
     volumes:
       - ./config/layout.json:/foxglove/default-layout.json
     environment:
@@ -70,13 +57,11 @@ services:
   foxglove-ds:
     image: husarion/foxglove-bridge:humble-0.7.3-20240108
     restart: unless-stopped
+    network_mode: host
     command: >
       ros2 launch foxglove_bridge foxglove_bridge_launch.xml
         port:=8765
         capabilities:=[clientPublish,connectionGraph,assets]
-    depends_on:
-      rplidar:
-        condition: service_started
 
   explore_lite:
     build:
