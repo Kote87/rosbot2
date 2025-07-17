@@ -81,9 +81,14 @@ services:
     environment: [ ROS_DOMAIN_ID=0 ]
     volumes:
       - ./scripts/lidar_overlay.py:/overlay.py:ro
-    command: [ "bash", "-c",
-               "apt-get update -qq && apt-get install -y python3-opencv && \
-                python3 /overlay.py" ]
+    command: >
+      bash -c "
+        curl -fsSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+          | gpg --dearmor -o /usr/share/keyrings/ros-archive-keyring.gpg && \
+        sed -i 's#signed-by=/usr/share/keyrings/.*#signed-by=/usr/share/keyrings/ros-archive-keyring.gpg#' \
+          /etc/apt/sources.list.d/ros2.list && \
+        apt-get update -qq && apt-get install -y --no-install-recommends python3-opencv && \
+        python3 /overlay.py"
     depends_on:
       static_tf:
         condition: service_started
