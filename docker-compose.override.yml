@@ -33,12 +33,6 @@ services:
   navigation:
     volumes:
       - ./maps:/home/husarion/rosbotxl/maps
-    command: >
-      ros2 launch /husarion_utils/bringup_launch.py
-        slam:=false
-        params_file:=/params.yaml
-        map:=/maps/mapa_nave.yaml
-        use_sim_time:=False
 
   ###############################################################
   # 4) explore_lite dormido (evita exploración autónoma)
