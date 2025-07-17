@@ -32,6 +32,11 @@ services:
   ###############################################################
   navigation:
     volumes:
+      # Mount original navigation parameters
+      - ./config/nav2_${CONTROLLER:-rpp}_params.yaml:/params.yaml
+      # Map files available under the default path used by the launch script
+      - ./maps:/maps
+      # Additional mount for manual access inside the container
       - ./maps:/home/husarion/rosbotxl/maps
     command: >
       ros2 launch /husarion_utils/bringup_launch.py
