@@ -27,7 +27,7 @@ def generate_launch_description():
             "launch",
             "nav2_bringup",
             "bringup_launch.py",
-            "slam:=false",
+            "slam:=False",
             f"map:={MAP}",
             "autostart:=true",
         ],

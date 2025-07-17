@@ -97,7 +97,7 @@ def generate_launch_description():
     nav2 = ExecuteProcess(
         cmd=[
             'ros2','launch','nav2_bringup','bringup_launch.py',
-            f'slam:=false',
+            f'slam:=False',
             f'map:={MAP}',
             'autostart:=true'
         ],
