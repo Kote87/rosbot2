@@ -1,82 +1,90 @@
-# docker-compose.override.yml
-version: "3.5"
+version: "3.8"
 
 services:
-  #################################################################
-  # 1) Desactivar exploración autónoma (explore_lite/Nav2)
-  #################################################################
-  navigation:
-    command: ["bash","-c","echo explore_lite disabled by override; sleep infinity"]
-    healthcheck:
-      test: ["CMD","true"]
-  explore_lite:
-    command: ["bash", "-c", "echo 'explore_lite disabled (teleop mapping)'; sleep infinity"]
-    healthcheck:
-      test: ["CMD", "true"]
-
-  #################################################################
-  # 2) Slam-Toolbox  (online_sync, construye /map)
-  #################################################################
-  slam_toolbox:
-    image: husarion/rosbot-xl:humble-0.10.0-20240202
-    network_mode: host
-    privileged: true
-    environment:
-      - ROS_DOMAIN_ID=0
+  ###############################################################
+  # 1) rosbot: drivers SIN cámara OAK
+  ###############################################################
+  rosbot:
     command: >
-      bash -c "
-        source /opt/ros/humble/setup.bash &&
-        ros2 launch slam_toolbox online_sync_launch.py
-          slam_params_file:=/ros_ws/src/slam_toolbox/config/mapper_params_online_sync.yaml
-          use_sim_time:=false"
-    depends_on:
-      - rosbot               # ← IMPORTANTE: el nombre que SÍ existe
+      ros2 launch rosbot_xl_bringup bringup.launch.py
+        mecanum:=${MECANUM:-True}
+        enable_oak:=false
 
-  #################################################################
-  # 3) Tele-op por teclado  (publica /cmd_vel)
-  #################################################################
+  ###############################################################
+  # 2) teleop_twist_keyboard (mover el robot)
+  ###############################################################
   teleop:
     image: husarion/rosbot-xl:humble-0.10.0-20240202
     network_mode: host
     privileged: true
     stdin_open: true
     tty: true
-    environment:
-      - ROS_DOMAIN_ID=0
-    command: >
-      bash -c "
-        source /opt/ros/humble/setup.bash &&
-        ros2 run teleop_twist_keyboard teleop_twist_keyboard
-          cmd_vel:=/cmd_vel"
-
-  # ────────────────────────────────
-  # Puente ROS 2 ⇆ Foxglove WebSocket
-  # ────────────────────────────────
-  # UI web: sólo 8080 -> host
-  foxglove:
-    image: husarion/foxglove:latest
-    network_mode: bridge
-    ports:
-      - "8080:8080"              #  <-- elimina 8765:8765 si estaba
-    environment:
-      - DS_HOST=foxglove-ds      #  (ya estaba así)
-      - DS_PORT=8765
-
-  # Bridge ROS <-> WebSocket
-  foxglove-ds:
-    image: husarion/foxglove-bridge:humble-0.7.3-20240108   # ← trae el paquete
-    network_mode: bridge
-    privileged: true
-    ports:
-      - "8765:8765"              # expone 8765 al host
-    environment:
-      - ROS_DOMAIN_ID=0
+    environment: [ ROS_DOMAIN_ID=0 ]
     depends_on:
-      rosbot:                       # nombre exacto del servicio que ya existe
-        condition: service_healthy
+      rosbot: { condition: service_started }   # tolera que rosbot no tenga healthcheck
+    command: >
+      bash -c "source /opt/ros/humble/setup.bash &&
+               ros2 run teleop_twist_keyboard teleop_twist_keyboard
+                 cmd_vel:=/cmd_vel"
+
+  ###############################################################
+  # 3) Navigation 2 (activo: genera /map)
+  ###############################################################
+  navigation:
+    volumes:
+      - ./maps:/home/husarion/rosbotxl/maps
+
+  ###############################################################
+  # 4) explore_lite dormido (evita exploración autónoma)
+  ###############################################################
+  explore_lite:
+    command: [ "bash","-c","echo 'explore_lite disabled'; sleep infinity" ]
+
+  ###############################################################
+  # 5) Foxglove‑bridge con buffer / canales amplios
+  ###############################################################
+  foxglove-ds:
+    image: husarion/foxglove-bridge:humble-0.7.3-20240108
+    restart: unless-stopped
     command: >
       ros2 launch foxglove_bridge foxglove_bridge_launch.xml
-        address:=0.0.0.0
         port:=8765
-        use_compressed:=true
+        capabilities:=[clientPublish,connectionGraph,assets]
+    depends_on:
+      rplidar:
+        condition: service_started
 
+  ###############################################################
+  # 6) Foxglove Studio (UI) – sin cambios
+  ###############################################################
+  # foxglove  se queda tal y como está en tu compose.yaml
+
+###############################################################
+# 7) Static transform  (láser 20 cm detrás, 30 cm arriba)
+###############################################################
+  static_tf:
+    image: husarion/rosbot-xl:humble-0.10.0-20240202
+    network_mode: host
+    restart: unless-stopped
+    environment: [ ROS_DOMAIN_ID=0 ]
+    command: [ "ros2", "run", "tf2_ros", "static_transform_publisher",
+               "-0.20", "0.00", "0.30",        # x  y  z
+               "-1.5708", "0", "1.5708",       # roll  pitch  yaw
+               "laser", "oak_rgb_camera_optical_frame" ]
+
+###############################################################
+# 8) Overlay  (imagen OAK + puntos RPLIDAR)
+###############################################################
+  overlay:
+    image: husarion/rosbot-xl:humble-0.10.0-20240202
+    network_mode: host
+    restart: unless-stopped
+    environment: [ ROS_DOMAIN_ID=0 ]
+    volumes:
+      - ./scripts/lidar_overlay.py:/overlay.py:ro
+    command: [ "bash", "-c",
+               "apt-get update -qq && apt-get install -y python3-opencv && \
+                python3 /overlay.py" ]
+    depends_on:
+      static_tf:
+        condition: service_started
