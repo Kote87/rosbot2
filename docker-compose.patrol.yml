@@ -1,0 +1,10 @@
+version: "3.8"
+
+services:
+  navigation:
+    command: >
+      ros2 launch /husarion_utils/bringup_launch.py
+        slam:=false
+        params_file:=/params.yaml
+        map:=/maps/mapa_nave.yaml
+        use_sim_time:=False
