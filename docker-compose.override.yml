@@ -8,7 +8,11 @@ services:
     command: >
       ros2 launch rosbot_xl_bringup bringup.launch.py
         mecanum:=${MECANUM:-True}
-        enable_oak:=false
+        enable_oak:=true
+        rgb_camera_width:=1920
+        rgb_camera_height:=1080
+        rgb_camera_fps:=30
+        rgb_camera_compression_quality:=95
 
   ###############################################################
   # 2) teleop_twist_keyboard (mover el robot)
