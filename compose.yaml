@@ -16,11 +16,11 @@ services:
     image: husarion/rplidar:humble-1.0.1-20240104
     restart: unless-stopped
     devices:
-      - /dev/ttyUSB1:/dev/ttyUSB1
+      - /dev/ttyUSB0:/dev/ttyUSB0
     command: >
       ros2 launch /husarion_utils/rplidar.launch.py
         serial_baudrate:=${LIDAR_BAUDRATE:-1000000}
-        serial_port:=/dev/ttyUSB1
+        serial_port:=/dev/ttyUSB0
     environment: [ ROS_DOMAIN_ID=0 ]
     healthcheck:
       test: ["CMD-SHELL",
