@@ -79,11 +79,14 @@ just sync rosbotxl
 
 To ensure proper user configuration, review the content of the `.env` file and select the appropriate configuration (the default options should be suitable).
 
-- **`LIDAR_BAUDRATE`** - depend on mounted LiDAR,
 - **`MECANUM`** - wheel type,
 - **`SLAM`** - choose between mapping and localization modes,
 - **`SAVE_MAP_PERIOD`** - period of time for autosave map (set `0` to disable),
 - **`CONTROLLER`** - choose the navigation controller type,
+
+The RPLIDAR sensor is configured in `compose.yaml` to use `/dev/ttyUSB1`
+with a baud rate of `1000000`. Adjust these settings in the Compose file
+if your hardware requires a different configuration.
 
 ### 🤖 Step 4: Running Navigation & Mapping
 
