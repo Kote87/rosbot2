@@ -1,0 +1,6 @@
+/oak:
+  ros__parameters:
+    rgb:
+      i_resolution: "1080P"
+      i_fps:       30.0
+      i_output_isp: false

@@ -88,3 +88,18 @@ services:
     depends_on:
       static_tf:
         condition: service_started
+
+  ###############################################################
+  # 9) DepthAI camera service
+  ###############################################################
+  depthai:
+    image: husarion/rosbot-xl:humble-0.10.0-20240202
+    network_mode: host
+    privileged: true
+    restart: unless-stopped
+    environment: [ ROS_DOMAIN_ID=0 ]
+    volumes:
+      - ./config/oak_1080p.yaml:/config/oak_1080p.yaml:ro
+    command: >
+      ros2 launch depthai_ros_driver camera.launch.py
+        params_file:=/config/oak_1080p.yaml
