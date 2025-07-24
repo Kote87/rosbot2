@@ -9,6 +9,8 @@ services:
       ros2 launch rosbot_xl_bringup bringup.launch.py
         mecanum:=${MECANUM:-True}
         enable_oak:=false
+    volumes:
+      - ./maps:/maps
 
   ###############################################################
   # 2) teleop_twist_keyboard (mover el robot)
