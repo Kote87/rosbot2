@@ -5,4 +5,4 @@
       i_fps:       30.0
       i_publish_topic: true
       i_enable_preview: false
-      i_output_isp: false
+      i_output_isp: true          # ← publicar frame ISP completo
