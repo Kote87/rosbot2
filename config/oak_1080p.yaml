@@ -1,8 +1,8 @@
 /oak:
   ros__parameters:
     rgb:
-      i_resolution:      "1080P"
-      i_fps:             30.0
-      i_publish_topic:   false     # ← NO publicar el preview
-      i_enable_preview:  false
-      i_output_isp:      true      # ← Publicar ISP completo
+      i_resolution: "1080P"
+      i_fps: 30.0
+      i_publish_topic: false      # NO publicar preview
+      i_enable_preview: false
+      i_output_isp: true          # publicar ISP
