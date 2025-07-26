@@ -2,15 +2,21 @@ version: "3.8"
 
 services:
   ###############################################################
-  # 1) rosbot: drivers SIN cámara OAK
+  # 1) rosbot: drivers con cámara OAK
   ###############################################################
   rosbot:
+    image: husarion/rosbot-xl:humble-0.10.0-20240202
+    network_mode: host
+    privileged: true
+    restart: unless-stopped
+    environment: [ ROS_DOMAIN_ID=0 ]
+    volumes:
+      - ./maps:/maps
+      - ./config/oak_1080p.yaml:/config/oak_1080p.yaml:ro
     command: >
       ros2 launch rosbot_xl_bringup bringup.launch.py
         mecanum:=${MECANUM:-True}
-        enable_oak:=false
-    volumes:
-      - ./maps:/maps
+        depthai_params_file:=/config/oak_1080p.yaml
 
   ###############################################################
   # 2) teleop_twist_keyboard (mover el robot)
