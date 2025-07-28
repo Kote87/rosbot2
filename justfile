@@ -170,9 +170,17 @@ play-path name:
 
 # Iniciar el robot y reproducir el recorrido "circuito1" una vez Nav2 esté listo
 start1:
-    just start-rosbot &
-    WAIT=0; \
-    until docker compose ps navigation | grep -q "(healthy)"; do \
-        sleep 2; WAIT=$$((WAIT+2)); [ $$WAIT -gt 60 ] && echo "\u26d4 nav2 no sano" && exit 1; \
-    done
-    just play-path circuito1
+    # arranca todos los contenedores SIN reconstruir imágenes
+    @docker compose up -d
+
+    # espera hasta 60\s a que navigation reporte healthy
+    @echo "⌛  Esperando a Navigation…"
+    @bash -c 'for n in $$(seq 1 30); do \
+        docker compose ps navigation | grep -q healthy && exit 0; \
+        sleep 2; \
+      done; \
+      echo "⛔  Navigation no healthy"; exit 1'
+
+    # ejecuta la ruta circuito1.yaml desde path_tools
+    @echo "▶️  Ejecutando circuito1.yaml"
+    @just play-path circuito1
