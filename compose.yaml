@@ -68,7 +68,8 @@ services:
     volumes:
       - ./routes:/routes
       - ./scripts:/scripts:ro
-    command: bash -c "sleep infinity"
+    # load the ROS environment before idling
+    command: bash -c "source /opt/ros/humble/setup.bash && sleep infinity"
     depends_on:
       navigation: { condition: service_started }
 
