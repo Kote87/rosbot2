@@ -151,3 +151,19 @@ teleop:
     @echo "│  Salir sin matar:  Ctrl-P  Ctrl-Q"
     @echo "╰───────────────────────────────────────────"
     docker attach $(docker compose -f compose.yaml -f docker-compose.override.yml ps -q teleop)
+
+# ------------------ Rutas grabadas ---------------------------------
+
+# Grabar un recorrido con teleoperación activa
+record-path name:
+    @echo "Grabando recorrido {{name}} –\u00a0pulsa Ctrl-C para terminar"
+    docker exec -it $(docker compose ps -q path_tools) \
+        ros2 run path_tools path_recorder.py \
+        --output /routes/{{name}}.yaml
+
+# Reproducir un recorrido con Nav2 (esquiva de obstáculos)
+play-path name:
+    @echo "Ejecutando recorrido {{name}}"
+    docker exec -it $(docker compose ps -q path_tools) \
+        ros2 run path_tools path_player.py \
+        --file /routes/{{name}}.yaml
