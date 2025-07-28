@@ -61,17 +61,14 @@ services:
         use_sim_time:=False
 
   path_tools:
-    image: husarion/rosbot-xl:humble-0.10.0-20240202
+    build:
+      context: .
+      dockerfile: Dockerfile.path_tools
     network_mode: host
-    restart: unless-stopped
-    environment: [ ROS_DOMAIN_ID=0 ]
     volumes:
       - ./routes:/routes
       - ./scripts:/scripts:ro
-    # load the ROS environment before idling
-    command: bash -c "source /opt/ros/humble/setup.bash && sleep infinity"
-    depends_on:
-      navigation: { condition: service_started }
+    command: /ros_entrypoint.sh bash -c "sleep infinity"
 
   foxglove:
     image: husarion/foxglove:1.84.0
