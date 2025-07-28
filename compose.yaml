@@ -43,30 +43,35 @@ services:
       retries: 10
 
   navigation:
-    image: husarion/rosbot-xl:humble-0.10.0-20240202
+    image: husarion/navigation2:humble-1.1.12-20240123   # ← imagen original
+    restart: unless-stopped
     network_mode: host
 
-    # 1) monta tu carpeta ./maps (la que vimos con almacen1.yaml)
-    #    dentro del contenedor en /maps **solo-lectura**.
-    #    El sufijo ":ro" significa “read-only”: el contenedor
-    #    no podrá modificar tu mapa en disco.
-    volumes:
-      - ./maps:/maps:ro
+    # 1. sensores deben estar sanos antes
+    depends_on:
+      rplidar:  { condition: service_healthy }
+      rosbot:   { condition: service_healthy }
 
-    # 2) lanza bringup en modo navegación *sin* SLAM y
-    #    cargando el mapa que ya tienes grabado.
+    # 2. monta tus mapas (LECTURA-ESCRITURA como antes)
+    volumes:
+      - ./config/nav2_${CONTROLLER:-rpp}_params.yaml:/params.yaml
+      - ./maps:/maps
+
+    # 3. comando ORIGINAL, con mapa sólo si SLAM=False
+    #    - si arranca con  SLAM=True  (teleop)  ➜  se ignora 'map'
+    #    - si arranca con  SLAM=False (start1) ➜  carga /maps/almacen1.yaml
     command: >
-      ros2 launch rosbot_xl_bringup navigation.launch.py
-        slam:=False
-        map:=/maps/almacen1.yaml           # ← nombre EXACTO del mapa
+      ros2 launch /husarion_utils/bringup_launch.py
+        slam:=${SLAM:-True}
         params_file:=/params.yaml
+        map:=/maps/almacen1.yaml
         use_sim_time:=False
 
-    # 3) healthcheck (muchas imágenes de Husarion ya lo traen,
-    #    mantén lo que tengas; si no existe, deja esto)
+    # 4. healthcheck (igual que antes)
     healthcheck:
-      test: ["CMD", "ros2", "topic", "info", "/amcl_pose"]
-      interval: 10s
+      test: ["CMD-SHELL",
+             "bash -c 'source /opt/ros/humble/setup.bash && ros2 topic info /amcl_pose -q'"]
+      interval: 15s
       timeout: 5s
       retries: 6
 

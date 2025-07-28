@@ -171,7 +171,7 @@ play-path name:
 # Iniciar el robot y reproducir el recorrido "circuito1" una vez Nav2 esté listo
 start1:
     # arranca todos los contenedores SIN reconstruir imágenes
-    @docker compose up -d
+    @SLAM=False docker compose up -d
 
     # espera hasta 60\s a que navigation reporte healthy
     @echo "⌛  Esperando a Navigation…"
