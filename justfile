@@ -65,7 +65,9 @@ flash-firmware: _install-yq _run-as-user
 start-rosbot: _run-as-user
     #!/bin/bash
     mkdir -m 775 -p maps
-    docker compose -f compose.yaml up --build
+    docker compose -f compose.yaml down
+    docker compose -f compose.yaml pull
+    docker compose -f compose.yaml up
 
 # start the simulation (available options: gazebo, webots)
 start-simulation engine="gazebo": _run-as-user
