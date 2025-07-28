@@ -8,7 +8,15 @@ Se detiene con Ctrl‑C.
 import sys, math, yaml, signal, rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import PoseWithCovarianceStamped
-from tf_transformations import euler_from_quaternion
+
+
+def yaw_from_quaternion(q):
+    """Convierte un quaternion (x,y,z,w) en yaw (rad)."""
+    x, y, z, w = q
+    # Fórmula estándar yaw = atan2(2(wz + xy), 1 - 2(y² + z²))
+    siny_cosp = 2.0 * (w * z + x * y)
+    cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
+    return math.atan2(siny_cosp, cosy_cosp)
 
 DIST_THRESHOLD = 0.10  # metros entre muestras
 
@@ -40,7 +48,7 @@ class Recorder(Node):
 
     def _store(self, pose):
         q = pose.orientation
-        _, _, yaw = euler_from_quaternion([q.x, q.y, q.z, q.w])
+        yaw = yaw_from_quaternion([q.x, q.y, q.z, q.w])
         self.path.append(dict(x=pose.position.x, y=pose.position.y, yaw=float(yaw)))
         self.last_pose = pose
 

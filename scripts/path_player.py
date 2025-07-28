@@ -10,7 +10,12 @@ from rclpy.action import ActionClient
 from geometry_msgs.msg import PoseStamped, Quaternion
 from nav2_msgs.action import FollowWaypoints
 from builtin_interfaces.msg import Time as TimeMsg
-from tf_transformations import quaternion_from_euler
+
+
+def quaternion_from_yaw(yaw):
+    """Devuelve (x,y,z,w) para yaw dado (roll=pitch=0)."""
+    half = yaw * 0.5
+    return (0.0, 0.0, math.sin(half), math.cos(half))
 
 
 class Player(Node):
@@ -34,7 +39,7 @@ class Player(Node):
             ps.header.stamp = TimeMsg(sec=0, nanosec=0)
             ps.pose.position.x = float(w["x"])
             ps.pose.position.y = float(w["y"])
-            q = quaternion_from_euler(0, 0, float(w["yaw"]))
+            q = quaternion_from_yaw(float(w["yaw"]))
             ps.pose.orientation = Quaternion(x=q[0], y=q[1], z=q[2], w=q[3])
             poses.append(ps)
         return poses
