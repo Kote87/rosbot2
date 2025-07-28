@@ -158,12 +158,14 @@ teleop:
 record-path name:
     @echo "Grabando recorrido {{name}} –\u00a0pulsa Ctrl-C para terminar"
     docker exec -it $(docker compose ps -q path_tools) \
-        ros2 run path_tools path_recorder.py \
-        --output /routes/{{name}}.yaml
+        bash -c "source /opt/ros/humble/setup.bash && \
+                 python3 /scripts/path_recorder.py \
+                 --output /routes/{{name}}.yaml"
 
 # Reproducir un recorrido con Nav2 (esquiva de obstáculos)
 play-path name:
     @echo "Ejecutando recorrido {{name}}"
     docker exec -it $(docker compose ps -q path_tools) \
-        ros2 run path_tools path_player.py \
-        --file /routes/{{name}}.yaml
+        bash -c "source /opt/ros/humble/setup.bash && \
+                 python3 /scripts/path_player.py \
+                 --file /routes/{{name}}.yaml"
