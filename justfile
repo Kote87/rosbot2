@@ -169,3 +169,26 @@ play-path name:
         bash -c "source /opt/ros/humble/setup.bash && \
                  python3 /scripts/path_player.py \
                  --file /routes/{{name}}.yaml"
+# ────────────────────────────────────────────────────────────────
+#  start-route  →  Arranca ROSbot con mapa fijo y reproduce una ruta
+#     Uso:  just start-route mi_ruta        # (omite la extensión .yaml)
+# ────────────────────────────────────────────────────────────────
+start-route ruta="mi_ruta":
+    # 1) Levanta sólo compose.yaml (sin el override ⇒ no arranca teleop)
+    @SLAM=False docker compose -f compose.yaml up -d
+
+    # 2) Espera a que el servicio navigation aparezca sano (máx 60 s)
+    @echo "⌛  Esperando a Nav2..."
+    @bash -c 'for i in {1..30}; do \
+        docker compose ps navigation | grep -q "(healthy)" && exit 0; \
+        sleep 2; done; echo "⛔  navigation no healthy"; exit 1'
+
+    # 3) Lanza el reproductor de waypoints dentro de path_tools
+    @just play-path {{ruta}}
+
+# ────────────────────────────────────────────────────────────────
+#  ruta1  →  atajo sin parámetros. Equivale a:
+#           just start-route mi_ruta
+# ────────────────────────────────────────────────────────────────
+ruta1:
+    just start-route mi_ruta
