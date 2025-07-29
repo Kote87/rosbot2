@@ -156,31 +156,16 @@ teleop:
 
 # Grabar un recorrido con teleoperación activa
 record-path name:
-    CID=$(docker compose ps -q path_tools)
-    docker exec -i $CID bash -c \
-      "source /opt/ros/humble/setup.bash && \
-       python3 /scripts/path_recorder.py --output /routes/{{name}}.yaml"
+    @echo "Grabando recorrido {{name}} –\u00a0pulsa Ctrl-C para terminar"
+    docker exec -it $(docker compose ps -q path_tools) \
+        bash -c "source /opt/ros/humble/setup.bash && \
+                 python3 /scripts/path_recorder.py \
+                 --output /routes/{{name}}.yaml"
 
 # Reproducir un recorrido con Nav2 (esquiva de obstáculos)
 play-path name:
-    CID=$(docker compose ps -q path_tools)
-    docker exec -i $CID bash -c \
-      "source /opt/ros/humble/setup.bash && \
-       python3 /scripts/path_player.py --file /routes/{{name}}.yaml"
-
-# Iniciar el robot y reproducir el recorrido "circuito1" una vez Nav2 esté listo
-start1:
-    # arranca todos los contenedores SIN reconstruir imágenes
-    @SLAM=False docker compose up -d
-
-    # espera hasta 60\s a que navigation reporte healthy
-    @echo "⌛  Esperando a Navigation…"
-    @bash -c 'for n in $$(seq 1 30); do \
-        docker compose ps navigation | grep -q healthy && exit 0; \
-        sleep 2; \
-      done; \
-      echo "⛔  Navigation no healthy"; exit 1'
-
-    # ejecuta la ruta circuito1.yaml desde path_tools
-    @echo "▶️  Ejecutando circuito1.yaml"
-    @just play-path circuito1
+    @echo "Ejecutando recorrido {{name}}"
+    docker exec -it $(docker compose ps -q path_tools) \
+        bash -c "source /opt/ros/humble/setup.bash && \
+                 python3 /scripts/path_player.py \
+                 --file /routes/{{name}}.yaml"

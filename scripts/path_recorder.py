@@ -13,7 +13,10 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 def yaw_from_quaternion(q):
     """Convierte un quaternion (x,y,z,w) en yaw (rad)."""
     x, y, z, w = q
-    return math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z))
+    # Fórmula estándar yaw = atan2(2(wz + xy), 1 - 2(y² + z²))
+    siny_cosp = 2.0 * (w * z + x * y)
+    cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
+    return math.atan2(siny_cosp, cosy_cosp)
 
 DIST_THRESHOLD = 0.10  # metros entre muestras
 

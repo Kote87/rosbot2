@@ -43,37 +43,22 @@ services:
       retries: 10
 
   navigation:
-    image: husarion/navigation2:humble-1.1.12-20240123   # ← imagen original
+    image: husarion/navigation2:humble-1.1.12-20240123
     restart: unless-stopped
-    network_mode: host
-
-    # 1. sensores deben estar sanos antes
     depends_on:
-      rplidar:  { condition: service_healthy }
-      rosbot:   { condition: service_healthy }
-
-    # 2. monta tus mapas (LECTURA-ESCRITURA como antes)
+      rplidar:
+        condition: service_healthy
+      rosbot:
+        condition: service_healthy
     volumes:
       - ./config/nav2_${CONTROLLER:-rpp}_params.yaml:/params.yaml
       - ./maps:/maps
-
-    # 3. comando ORIGINAL, con mapa sólo si SLAM=False
-    #    - si arranca con  SLAM=True  (teleop)  ➜  se ignora 'map'
-    #    - si arranca con  SLAM=False (start1) ➜  carga /maps/almacen1.yaml
     command: >
       ros2 launch /husarion_utils/bringup_launch.py
         slam:=${SLAM:-True}
         params_file:=/params.yaml
-        map:=/maps/almacen1.yaml
+        map:=/maps/map.yaml
         use_sim_time:=False
-
-    # 4. healthcheck (igual que antes)
-    healthcheck:
-      test: ["CMD-SHELL",
-             "bash -c 'source /opt/ros/humble/setup.bash && ros2 topic info /amcl_pose -q'"]
-      interval: 15s
-      timeout: 5s
-      retries: 6
 
   path_tools:
     image: husarion/rosbot-xl:humble-0.10.0-20240202
