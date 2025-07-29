@@ -52,7 +52,7 @@ services:
         condition: service_healthy
     volumes:
       - ./config/nav2_${CONTROLLER:-rpp}_params.yaml:/params.yaml
-      - ./maps:/maps
+      - ./maps:/almacen_nuevo.yaml
     command: >
       ros2 launch /husarion_utils/bringup_launch.py
         slam:=${SLAM:-True}
