@@ -8,6 +8,7 @@ import sys, time, yaml, math, rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
 from geometry_msgs.msg import PoseStamped, Quaternion
+import geometry_msgs.msg
 from nav2_msgs.action import FollowWaypoints
 from builtin_interfaces.msg import Time as TimeMsg
 
@@ -75,8 +76,20 @@ def main():
         sys.exit(1)
     yaml_file = sys.argv[sys.argv.index("--file") + 1]
     rclpy.init()
-    Player(yaml_file)
-    rclpy.spin(Player)
+    node = Player(yaml_file)
+
+    # ── NUEVO: publicar pose inicial ────────────────────────────
+    pub = node.create_publisher(
+        geometry_msgs.msg.PoseWithCovarianceStamped, "/initialpose", qos_profile=1
+    )
+    ps0 = node.waypoints[0]                       # primer waypoint
+    ipose = geometry_msgs.msg.PoseWithCovarianceStamped()
+    ipose.header.frame_id = node.global_frame
+    ipose.pose.pose = ps0.pose
+    pub.publish(ipose)
+    node.get_logger().info("📍  Pose inicial publicada")
+
+    rclpy.spin(node)
 
 
 if __name__ == "__main__":
