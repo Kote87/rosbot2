@@ -5,8 +5,19 @@ depthai_ros2:
       enable: true
       resolution: 1080P
       fps: 30
+    # Algunas builds usan 'stereo_i' y otras 'stereo'.
+    # Dejamos AMBAS activadas para asegurar la salida.
     stereo_i:
+      enable: true
       enableDepth: true
       subpixel: true
       leftRightCheck: true
       extended: true
+      fps: 30
+    stereo:
+      enable: true
+      enableDepth: true
+      subpixel: true
+      leftRightCheck: true
+      extended: true
+      fps: 30

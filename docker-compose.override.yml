@@ -76,9 +76,9 @@ services:
     restart: unless-stopped
     environment: [ ROS_DOMAIN_ID=0 ]
     command: [ "ros2", "run", "tf2_ros", "static_transform_publisher",
-               "-0.20", "0.00", "0.30",        # x  y  z
-               "-1.5708", "0", "1.5708",       # roll  pitch  yaw
-               "laser", "oak_rgb_camera_optical_frame" ]
+               "0.12", "0.00", "0.20",         # x  y  z  (ajusta a tu montaje real)
+               "0", "0", "0",                  # roll  pitch  yaw
+               "base_link", "oak_rgb_camera_optical_frame" ]
 
 ###############################################################
 # 8) Overlay  (imagen OAK + puntos RPLIDAR)

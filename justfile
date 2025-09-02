@@ -208,3 +208,40 @@ oak-points:
 oak-points-stop:
     CID=$(docker compose ps -q path_tools)
     docker exec -it $$CID bash -lc "pkill -f depth_image_proc || true"
+
+# ============================ OAK / PointCloud =============================
+
+# Reinicia sólo la cámara OAK (contenedor rosbot)
+oak-restart:
+    @docker compose restart rosbot
+
+# Diagnóstico rápido de OAK (nodos, topics y publisher de /oak/points)
+check-oak:
+    @docker compose exec rosbot bash -lc '\
+      source /opt/ros/humble/setup.bash && \
+      echo "— nodes —" && ros2 node list | egrep -i "oak|depthai|point|camera" || true && \
+      echo "— topics —" && ros2 topic list | egrep "^/oak/" || true && \
+      echo "— /oak/points —" && ros2 topic info /oak/points || true && \
+      echo "— stereo —" && (ros2 topic list | egrep "^/oak/stereo/" || echo "NO /oak/stereo/*") \
+    '
+
+# Fallback: si tu build publica /oak/stereo/image_rect, lo relay a /oak/stereo/image_raw
+# (para que el nodo /oak_point_cloud_xyzrgb_node empiece a publicar /oak/points)
+oak-relay-stereo:
+    @docker compose exec -d rosbot bash -lc '\
+      source /opt/ros/humble/setup.bash && \
+      if ros2 topic list | grep -q "^/oak/stereo/image_rect$"; then \
+        echo "Relaying /oak/stereo/image_rect -> /oak/stereo/image_raw"; \
+        ros2 run topic_tools relay /oak/stereo/image_rect /oak/stereo/image_raw ; \
+      else \
+        echo "No existe /oak/stereo/image_rect (no se lanza relay)"; \
+      fi \
+    '
+
+# Comprobación de TF para nube en 3D (repite si da extrapolation justo al arrancar)
+oak-tf:
+    @docker compose exec rosbot bash -lc '\
+      source /opt/ros/humble/setup.bash && \
+      timeout 3 ros2 run tf2_ros tf2_echo base_link oak_rgb_camera_optical_frame || true && \
+      timeout 3 ros2 run tf2_ros tf2_echo map base_link || true \
+    '
