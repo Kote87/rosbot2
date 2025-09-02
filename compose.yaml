@@ -61,9 +61,7 @@ services:
         use_sim_time:=False
 
   path_tools:
-    build:
-      context: .
-      dockerfile: Dockerfile.path_tools
+    image: husarion/navigation2:humble-1.1.12-20240123
     network_mode: host
     restart: unless-stopped
     environment: [ ROS_DOMAIN_ID=0 ]
