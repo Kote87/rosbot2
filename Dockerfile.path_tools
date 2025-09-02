@@ -1,0 +1,13 @@
+FROM husarion/navigation2:humble-1.1.12-20240123
+
+# Base ROS 2 + depth_image_proc (para point_cloud_xyz)
+RUN apt-get update -qq && apt-get install -y curl gnupg lsb-release && \
+    curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc \
+      | gpg --dearmor -o /usr/share/keyrings/ros2-latest-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) \
+      signed-by=/usr/share/keyrings/ros2-latest-archive-keyring.gpg] \
+      http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" \
+      > /etc/apt/sources.list.d/ros2-latest.list && \
+    apt-get update -qq && \
+    apt-get install -y ros-humble-depth-image-proc && \
+    rm -rf /var/lib/apt/lists/*

@@ -1,8 +1,12 @@
-/oak:
+depthai_ros2:
   ros__parameters:
+    pipeline_type: RGBStereo
     rgb:
-      i_resolution: "1080P"
-      i_fps: 30.0
-      i_publish_topic: false      # NO publicar preview
-      i_enable_preview: false
-      i_output_isp: true          # publicar ISP
+      enable: true
+      resolution: 1080P
+      fps: 30
+    stereo_i:
+      enableDepth: true
+      subpixel: true
+      leftRightCheck: true
+      extended: true

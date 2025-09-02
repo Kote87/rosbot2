@@ -61,14 +61,15 @@ services:
         use_sim_time:=False
 
   path_tools:
-    image: husarion/navigation2:humble-1.1.12-20240123
+    build:
+      context: .
+      dockerfile: Dockerfile.path_tools
     network_mode: host
     restart: unless-stopped
     environment: [ ROS_DOMAIN_ID=0 ]
     volumes:
       - ./routes:/routes
       - ./scripts:/scripts:ro
-    # load the ROS environment before idling
     command: bash -c "source /opt/ros/humble/setup.bash && sleep infinity"
     depends_on:
       navigation: { condition: service_started }

@@ -192,3 +192,19 @@ start-route ruta="mi_ruta":
 # ────────────────────────────────────────────────────────────────
 ruta1:
     just start-route mi_ruta
+
+# Genera PointCloud de la OAK (publica /oak/points) dentro de path_tools
+oak-points:
+    CID=$(docker compose ps -q path_tools)
+    docker exec -it $$CID bash -lc \
+      "source /opt/ros/humble/setup.bash && \
+       ros2 run depth_image_proc point_cloud_xyz \
+         --ros-args \
+         -r depth:=/oak/stereo/depth \
+         -r camera_info:=/oak/stereo/camera_info \
+         -r points:=/oak/points"
+
+# Detiene el conversor si quedó corriendo en otra terminal
+oak-points-stop:
+    CID=$(docker compose ps -q path_tools)
+    docker exec -it $$CID bash -lc "pkill -f depth_image_proc || true"
