@@ -57,7 +57,7 @@ services:
       ros2 launch /husarion_utils/bringup_launch.py
         slam:=${SLAM:-True}
         params_file:=/params.yaml
-        map:=/maps/almacen1.yaml
+        map:=/maps/almacen2.yaml
         use_sim_time:=False
 
   path_tools:
