@@ -162,16 +162,12 @@ record-path name:
                  python3 /scripts/path_recorder.py \
                  --output /routes/{{name}}.yaml"
 
-# Reproducir un recorrido en modo CONTINUO (NavigateThroughPoses)
+# Reproducir un recorrido en modo FLUIDO (NavigateThroughPoses)
 play-path name:
-    @echo "Ejecutando recorrido {{name}} (continuo, forward, resample=5cm)"
+    @echo "Ejecutando recorrido {{name}} (fluido, re-muestreo 5cm, salida robusta)"
     docker exec -it $(docker compose ps -q path_tools) \
         bash -c "source /opt/ros/humble/setup.bash && \
-                 python3 /scripts/path_player.py \
-                 --file /routes/{{name}}.yaml \
-                 --mode continuous \
-                 --forward-only \
-                 --resample 0.05"
+                 python3 /scripts/path_player.py --file /routes/{{name}}.yaml"
 # ────────────────────────────────────────────────────────────────
 #  start-route  →  Arranca ROSbot con mapa fijo y reproduce una ruta
 #     Uso:  just start-route mi_ruta        # (omite la extensión .yaml)
