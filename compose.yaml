@@ -23,14 +23,13 @@ services:
   rplidar:
     image: husarion/rplidar:humble-1.0.1-20240104
     restart: unless-stopped
-
-    # Usa el puerto que acabamos de comprobar
+    # Puerto estable: by-id → alias interno /dev/rplidar
     devices:
-      - /dev/ttyUSB1:/dev/ttyUSB1
+      - ${RPLIDAR_BYID:-/dev/ttyUSB0}:/dev/rplidar
 
     command: >
       ros2 launch /husarion_utils/rplidar.launch.py
-        serial_port:=/dev/ttyUSB1
+        serial_port:=${RPLIDAR_PORT:-/dev/rplidar}
         serial_baudrate:=1000000
 
     environment: [ROS_DOMAIN_ID=0]
@@ -39,17 +38,15 @@ services:
              "bash -c 'source /opt/ros/humble/setup.bash && ros2 topic list | grep -q ^/scan$'"]
       interval: 30s
       timeout: 5s
-      start_period: 40s
+      start_period: 90s
       retries: 10
 
   navigation:
     image: husarion/navigation2:humble-1.1.12-20240123
     restart: unless-stopped
     depends_on:
-      rplidar:
-        condition: service_healthy
-      rosbot:
-        condition: service_healthy
+      rplidar: { condition: service_started }
+      rosbot:  { condition: service_healthy }
     volumes:
       - ./config/nav2_${CONTROLLER:-rpp}_params.yaml:/params.yaml
       - ./maps:/maps
