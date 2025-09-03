@@ -78,6 +78,9 @@ bt_navigator:
     robot_base_frame: base_link
     odom_topic: odometry/filtered
 
+    # Deja el que trae tu imagen si ya replanifica; si no, apunta a un BT con replan.
+    # default_nav_through_poses_bt_xml: "/opt/ros/humble/share/nav2_bt_navigator/behavior_trees/navigate_through_poses_w_replanning_and_recovery.xml"
+
     bt_loop_duration: 10
     default_server_timeout: 20
     wait_for_service_timeout: 1000
@@ -128,65 +131,31 @@ controller_server:
     min_y_velocity_threshold: 0.01    # Measured
     min_theta_velocity_threshold: 0.1 # Measured
 
-    progress_checker_plugin: progress_checker
+    progress_checker_plugins: ["progress_checker"]
+    goal_checker_plugins: ["goal_checker"]
+
     progress_checker:
-      plugin: nav2_controller::SimpleProgressChecker
-      required_movement_radius: 0.5
+      plugin: "nav2_controller::SimpleProgressChecker"
+      required_movement_radius: 0.25
       movement_time_allowance: 10.0
 
-    goal_checker_plugin: goal_checker
     goal_checker:
-      plugin: nav2_controller::SimpleGoalChecker
-      xy_goal_tolerance: 0.1
-      yaw_goal_tolerance: 0.3
-      stateful: true # if stateful is True goal checker will not check if the xy position matches again once it is found to be True.
+      plugin: "nav2_controller::SimpleGoalChecker"
+      stateful: false
+      xy_goal_tolerance: 0.20
+      yaw_goal_tolerance: 0.35
 
-    controller_plugins: [FollowPath]
+    controller_plugins: ["FollowPath"]
     FollowPath:
-      plugin: nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController
-
-      # Velocity/acceleration limits also have to be adjusted in the velocity smoother
-      desired_linear_vel: 0.4
-      lookahead_dist: 0.5
-      transform_tolerance: 0.25
-
-      # Adaptive lookahead gain
-      use_velocity_scaled_lookahead_dist: false # Currently doesn't work, uncomment in next release
-      lookahead_time: 1.5
-      min_lookahead_dist: 0.3
-      max_lookahead_dist: 0.6
-
-      # Approach to goal
-      min_approach_linear_velocity: 0.2
-      approach_velocity_scaling_dist: 0.5
-
-      # Collision detector
-      use_collision_detection: true
-      max_allowed_time_to_collision_up_to_carrot: 1.0
-
-      # Curvature velocity penalty
-      use_regulated_linear_velocity_scaling: true
-      regulated_linear_scaling_min_radius: 0.5
-
-      # Cost spaces velocity penalty
-      use_cost_regulated_linear_velocity_scaling: true # Whether to use the regulated features for proximity to obstacles (e.g. slow in close proximity to obstacles).
-      cost_scaling_dist: 0.55
-      cost_scaling_gain: 0.8 # Should be <= 1.0
-      inflation_cost_scaling_factor: 3.0
-
-      # Minimum speed in high cost spaces with high curvature
-      regulated_linear_scaling_min_speed: 0.25
-
+      plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
+      use_rotate_to_heading: false
       allow_reversing: false
-      use_rotate_to_heading: true
-      rotate_to_heading_min_angle: 0.7
-
-      # it is only used when rotating to heading (use_rotate_to_heading)
-      # for some reason rotate_to_heading_angular_vel is ignored and robot rotates with
-      # max_angular_accel/10. angular velocity (that's why it is set to higher value)
-      max_angular_accel: 7.0
-      rotate_to_heading_angular_vel: 2.5
-      use_interpolation: true
+      desired_linear_vel: 0.50
+      min_approach_linear_velocity: 0.10
+      use_velocity_scaled_lookahead_dist: true
+      min_lookahead_dist: 0.35
+      max_lookahead_dist: 0.80
+      lookahead_time: 1.0
 
 controller_server_rclcpp_node:
   ros__parameters:
@@ -312,23 +281,10 @@ planner_server:
     use_sim_time: false
     expected_planner_frequency: 1.0
 
-    planner_plugins: [GridBased]
+    planner_plugins: ["GridBased"]
     GridBased:
-      plugin: nav2_smac_planner/SmacPlanner2D
-      tolerance: 0.125 # tolerance for planning if unable to reach exact pose, in meters
-      downsample_costmap: false # whether or not to downsample the map
-      downsampling_factor: 1 # multiplier for the resolution of the costmap layer (e.g. 2 on a 5cm costmap would be 10cm)
-      allow_unknown: true # allow traveling in unknown space
-      max_iterations: 500000 # maximum total iterations to search for before failing (in case unreachable), set to -1 to disable
-      max_on_approach_iterations: 500 # maximum number of iterations to attempt to reach goal once in tolerance
-      max_planning_time: 3.0 # max time in s for planner to plan, smooth
-      cost_travel_multiplier: 2.5 # Cost multiplier to apply to search to steer away from high cost areas. Larger values will place in the center of aisles more exactly (if non-`FREE` cost potential field exists) but take slightly longer to compute. To optimize for speed, a value of 1.0 is reasonable. A reasonable tradeoff value is 2.0. A value of 0.0 effective disables steering away from obstacles and acts like a naive binary search A*.
-      use_final_approach_orientation: false # Whether to set the final path pose at the goal's orientation to the requested orientation (false) or in line with the approach angle so the robot doesn't rotate to heading (true)
-      smoother:
-        max_iterations: 500
-        w_smooth: 0.3
-        w_data: 0.2
-        tolerance: 1.0e-6
+      plugin: "nav2_navfn_planner/NavfnPlanner"
+      tolerance: 0.25
 
 planner_server_rclcpp_node:
   ros__parameters:
