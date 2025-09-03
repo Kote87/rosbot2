@@ -191,7 +191,7 @@ start-route ruta="mi_ruta":
 #           just start-route mi_ruta
 # ────────────────────────────────────────────────────────────────
 ruta1:
-    just start-route mi_ruta
+    just start-route ruta1
 
 # Genera PointCloud de la OAK (publica /oak/points) dentro de path_tools
 oak-points:
