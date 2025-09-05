@@ -184,9 +184,9 @@ local_costmap:
 
       footprint: "[[0.25, 0.20], [0.25, -0.20], [-0.25, -0.20], [-0.25, 0.20]]"
 
-      plugins: [obstacle_layer, inflation_layer]
+      plugins: ["obstacle_layer", "inflation_layer"]
       obstacle_layer:
-        plugin: nav2_costmap_2d::ObstacleLayer
+        plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: true
         observation_sources: scan
         scan:
@@ -200,7 +200,7 @@ local_costmap:
           marking: true
           inf_is_valid: true
       inflation_layer:
-        plugin: nav2_costmap_2d::InflationLayer
+        plugin: "nav2_costmap_2d::InflationLayer"
         enabled: true
         inflation_radius: 0.35
         cost_scaling_factor: 2.5
@@ -230,9 +230,13 @@ global_costmap:
 
       footprint: "[[0.25, 0.20], [0.25, -0.20], [-0.25, -0.20], [-0.25, 0.20]]"
 
-      plugins: [obstacle_layer, inflation_layer]
+      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        enabled: true
+        map_subscribe_transient_local: true
       obstacle_layer:
-        plugin: nav2_costmap_2d::ObstacleLayer
+        plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: true
         observation_sources: scan
         scan:
@@ -246,7 +250,7 @@ global_costmap:
           marking: true
           inf_is_valid: true
       inflation_layer:
-        plugin: nav2_costmap_2d::InflationLayer
+        plugin: "nav2_costmap_2d::InflationLayer"
         enabled: true
         inflation_radius: 0.35
         cost_scaling_factor: 2.5
