@@ -249,3 +249,19 @@ oak-tf:
       timeout 3 ros2 run tf2_ros tf2_echo base_link oak_rgb_camera_optical_frame || true && \
       timeout 3 ros2 run tf2_ros tf2_echo map base_link || true \
     '
+
+# ────────────────────────────────────────────────────────────────
+#  start-route-oak-off  →  Arranca ROSbot con overlay que desactiva la OAK
+#     Uso:  just start-route-oak-off mi_ruta mi_mapa
+# ────────────────────────────────────────────────────────────────
+start-route-oak-off ruta="r1" mapa="r1":
+    @SLAM=False MAP={{mapa}} docker compose -f compose.yaml -f docker-compose.oak-off.yml up -d
+    @docker compose stop explore_lite || true
+    @echo "⌛  Esperando a Nav2..."
+    @bash -c 'for i in {1..30}; do docker compose ps navigation | grep -q "(healthy)" && exit 0; sleep 2; done; echo "⛔  navigation no healthy"; exit 1'
+    @just play-path {{ruta}}
+
+# Atajo para la ruta r1 con OAK desactivada
+ruta1-sin-oak:
+    just start-route-oak-off r1 r1
+
