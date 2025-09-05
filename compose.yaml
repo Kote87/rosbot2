@@ -41,21 +41,23 @@ services:
       start_period: 90s
       retries: 10
 
-  navigation:
-    image: husarion/navigation2:humble-1.1.12-20240123
-    restart: unless-stopped
-    depends_on:
-      rplidar: { condition: service_started }
-      rosbot:  { condition: service_healthy }
-    volumes:
-      - ./config/nav2_${CONTROLLER:-rpp}_params.yaml:/params.yaml
-      - ./maps:/maps
-    command: >
-      ros2 launch /husarion_utils/bringup_launch.py
-        slam:=${SLAM:-True}
-        params_file:=/params.yaml
-        map:=/maps/r1.yaml
-        use_sim_time:=False
+    navigation:
+      image: husarion/navigation2:humble-1.1.12-20240123
+      restart: unless-stopped
+      depends_on:
+        rplidar: { condition: service_started }
+        rosbot:  { condition: service_healthy }
+      volumes:
+        - ./config/nav2_${CONTROLLER:-rpp}_params.yaml:/params.yaml
+        - ./maps:/maps
+      environment:
+        - MAP=${MAP:-r1}
+      command: >
+        ros2 launch /husarion_utils/bringup_launch.py
+          slam:=${SLAM:-True}
+          params_file:=/params.yaml
+          map:=/maps/${MAP}.yaml
+          use_sim_time:=False
 
   path_tools:
     image: husarion/navigation2:humble-1.1.12-20240123
