@@ -171,7 +171,7 @@ play-path name:
 #  start-route  →  Arranca ROSbot con mapa fijo y reproduce una ruta
 #     Uso:  just start-route mi_ruta        # (omite la extensión .yaml)
 # ────────────────────────────────────────────────────────────────
-start-route ruta="mi_ruta":
+start-route ruta="r1":
     # 1) Levanta sólo compose.yaml (sin el override ⇒ no arranca teleop)
     @SLAM=False docker compose -f compose.yaml up -d
 
