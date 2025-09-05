@@ -5,7 +5,7 @@ Uso:
   ros2 run path_tools path_recorder.py --output /routes/nombre.yaml
 Se detiene con Ctrl‑C.
 """
-import sys, math, yaml, signal, rclpy
+import sys, math, yaml, rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import PoseWithCovarianceStamped
 
@@ -68,9 +68,14 @@ def main():
     out_file = sys.argv[sys.argv.index("--output") + 1]
     rclpy.init()
     node = Recorder(out_file)
-    # Ctrl‑C clean
-    signal.signal(signal.SIGINT, lambda *_: node.shutdown() or sys.exit(0))
-    rclpy.spin(node)
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.shutdown()
+        node.destroy_node()
+        rclpy.shutdown()
 
 
 if __name__ == "__main__":
