@@ -164,16 +164,18 @@ record-path name:
 # Reproducir un recorrido en modo FLUIDO (NavigateThroughPoses)
 play-path name:
     @echo "Ejecutando recorrido {{name}} (fluido, re-muestreo 5cm, salida robusta)"
-    docker exec -it $(docker compose ps -q path_tools) \
-        bash -c "source /opt/ros/humble/setup.bash && \
-                 python3 /scripts/path_player.py --file /routes/{{name}}.yaml"
+    docker compose exec -it path_tools bash -lc \
+      "source /opt/ros/humble/setup.bash && \
+       python3 /scripts/path_player.py --file /routes/{{name}}.yaml"
 # ────────────────────────────────────────────────────────────────
 #  start-route  →  Arranca ROSbot con mapa fijo y reproduce una ruta
 #     Uso:  just start-route mi_ruta        # (omite la extensión .yaml)
 # ────────────────────────────────────────────────────────────────
 start-route ruta="r1":
     # 1) Levanta sólo compose.yaml (sin el override ⇒ no arranca teleop)
-    @SLAM=False docker compose -f compose.yaml up -d
+    @SLAM=False MAP=${MAP:-r1} docker compose -f compose.yaml up -d
+    # Evitar que explore_lite pre-empte los goals del player
+    @docker compose stop explore_lite || true
 
     # 2) Espera a que el servicio navigation aparezca sano (máx 60 s)
     @echo "⌛  Esperando a Nav2..."
@@ -189,6 +191,10 @@ start-route ruta="r1":
 #           just start-route mi_ruta
 # ────────────────────────────────────────────────────────────────
 ruta1:
+    just start-route r1
+
+# Alias directo
+r1:
     just start-route r1
 
 # Genera PointCloud de la OAK (publica /oak/points) dentro de path_tools
