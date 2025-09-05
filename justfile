@@ -173,9 +173,9 @@ play-path name:
 # ────────────────────────────────────────────────────────────────
 start-route ruta="r1":
     # 1) Levanta sólo compose.yaml (sin el override ⇒ no arranca teleop)
-    @SLAM=False MAP=${MAP:-r1} docker compose -f compose.yaml up -d
+    @SLAM=False MAP=${MAP:-r1} docker compose -f compose.yaml -f compose.route.yml up -d rosbot rplidar microros navigation path_tools foxglove foxglove-ds
     # Evitar que explore_lite pre-empte los goals del player
-    @docker compose stop explore_lite || true
+    @true
 
     # 2) Espera a que el servicio navigation aparezca sano (máx 60 s)
     @echo "⌛  Esperando a Nav2..."
