@@ -1,0 +1,11 @@
+# compose.route.yml
+services:
+  # 1) Rosbot SIN la OAK (mismo bringup pero sin depthai_params_file)
+  rosbot:
+    command: >
+      ros2 launch rosbot_xl_bringup bringup.launch.py
+        mecanum:=${MECANUM:-True}
+
+  # 2) Que explore_lite NO se arranque en modo rutas
+  explore_lite:
+    profiles: ["explore"]
