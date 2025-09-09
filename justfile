@@ -173,9 +173,9 @@ play-path name:
 # ────────────────────────────────────────────────────────────────
 start-route ruta="r1":
     # 1) Levanta sólo compose.yaml (sin el override ⇒ no arranca teleop)
-    @SLAM=False MAP=${MAP:-r1} docker compose -f compose.yaml -f compose.route.yml up -d rosbot rplidar microros navigation path_tools foxglove foxglove-ds
+    @SLAM=False MAP=${MAP:-r1} docker compose -f compose.yaml up -d
     # Evitar que explore_lite pre-empte los goals del player
-    @true
+    @docker compose stop explore_lite || true
 
     # 2) Espera a que el servicio navigation aparezca sano (máx 60 s)
     @echo "⌛  Esperando a Nav2..."
@@ -249,19 +249,3 @@ oak-tf:
       timeout 3 ros2 run tf2_ros tf2_echo base_link oak_rgb_camera_optical_frame || true && \
       timeout 3 ros2 run tf2_ros tf2_echo map base_link || true \
     '
-
-# ────────────────────────────────────────────────────────────────
-#  start-route-oak-off  →  Arranca ROSbot con overlay que desactiva la OAK
-#     Uso:  just start-route-oak-off mi_ruta mi_mapa
-# ────────────────────────────────────────────────────────────────
-start-route-oak-off ruta="r1" mapa="r1":
-    @SLAM=False MAP={{mapa}} docker compose -f compose.yaml -f docker-compose.oak-off.yml up -d
-    @docker compose stop explore_lite || true
-    @echo "⌛  Esperando a Nav2..."
-    @bash -c 'for i in {1..30}; do docker compose ps navigation | grep -q "(healthy)" && exit 0; sleep 2; done; echo "⛔  navigation no healthy"; exit 1'
-    @just play-path {{ruta}}
-
-# Atajo para la ruta r1 con OAK desactivada
-ruta1-sin-oak:
-    just start-route-oak-off r1 r1
-

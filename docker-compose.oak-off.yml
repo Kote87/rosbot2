@@ -1,5 +1,0 @@
-services:
-  rosbot:
-    command: >
-      ros2 launch rosbot_xl_bringup bringup.launch.py
-        mecanum:=${MECANUM:-True}
