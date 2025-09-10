@@ -101,6 +101,7 @@ services:
         condition: service_started
 
   explore_lite:
+    profiles: ["explore"]
     build:
       context: .
       dockerfile: Dockerfile.explore_lite
