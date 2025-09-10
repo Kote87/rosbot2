@@ -164,9 +164,11 @@ record-path name:
 # Reproducir un recorrido en modo FLUIDO (NavigateThroughPoses)
 play-path name:
     @echo "Ejecutando recorrido {{name}} (fluido, re-muestreo 5cm, salida robusta)"
-    docker compose exec -it path_tools bash -lc \
-      "source /opt/ros/humble/setup.bash && \
-       python3 /scripts/path_player.py --file /routes/{{name}}.yaml"
+    docker compose exec -it path_tools bash -lc '\
+      set -e; \
+      source /opt/ros/humble/setup.bash && \
+      python3 -u /scripts/path_player.py --file /routes/{{name}}.yaml || \
+      { st=$$?; echo "⛔ path_player.py terminó con código $$st"; exit $$st; }'
 # ────────────────────────────────────────────────────────────────
 #  start-route  →  Arranca ROSbot con mapa fijo y reproduce una ruta
 #     Uso:  just start-route mi_ruta        # (omite la extensión .yaml)
