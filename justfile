@@ -174,8 +174,7 @@ play-path name:
 start-route ruta="r1":
     # 1) Levanta sólo compose.yaml (sin el override ⇒ no arranca teleop)
     @SLAM=False MAP=${MAP:-r1} docker compose -f compose.yaml up -d
-    # Evitar que explore_lite pre-empte los goals del player
-    @docker compose stop explore_lite || true
+    # explore_lite no arranca por defecto (profiles: ["explore"])
 
     # 2) Espera a que el servicio navigation aparezca sano (máx 60 s)
     @echo "⌛  Esperando a Nav2..."
@@ -249,3 +248,11 @@ oak-tf:
       timeout 3 ros2 run tf2_ros tf2_echo base_link oak_rgb_camera_optical_frame || true && \
       timeout 3 ros2 run tf2_ros tf2_echo map base_link || true \
     '
+
+# Arrancar explore_lite (perfil 'explore') cuando quieras explorar el mapa
+explore-start:
+    COMPOSE_PROFILES=explore docker compose -f compose.yaml up -d explore_lite
+
+# Parar explore_lite si lo dejaste encendido
+explore-stop:
+    docker compose stop explore_lite || true
