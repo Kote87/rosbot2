@@ -5,6 +5,8 @@ services:
     image: husarion/rosbot-xl:humble-0.10.0-20240202
     network_mode: host
     privileged: true
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
     restart: unless-stopped
     environment: [ ROS_DOMAIN_ID=0 ]
     volumes:
