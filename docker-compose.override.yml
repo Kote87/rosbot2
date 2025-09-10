@@ -18,6 +18,7 @@ services:
     command: >
       ros2 launch rosbot_xl_bringup bringup.launch.py
         mecanum:=${MECANUM:-True}
+        depthai:=True
         depthai_params_file:=/config/oak_1080p.yaml
 
   ###############################################################
@@ -31,11 +32,8 @@ services:
     tty: true
     environment: [ ROS_DOMAIN_ID=0 ]
     depends_on:
-      rosbot: { condition: service_started }   # tolera que rosbot no tenga healthcheck
-    command: >
-      bash -c "source /opt/ros/humble/setup.bash &&
-               ros2 run teleop_twist_keyboard teleop_twist_keyboard
-                 cmd_vel:=/cmd_vel"
+      rosbot: { condition: service_started }
+    command: ["bash","-lc","source /opt/ros/humble/setup.bash && ros2 run teleop_twist_keyboard teleop_twist_keyboard cmd_vel:=/cmd_vel"]
 
   ###############################################################
   # 3) Navigation 2 (activo: genera /map)
