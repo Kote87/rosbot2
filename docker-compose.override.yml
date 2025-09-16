@@ -8,17 +8,15 @@ services:
     image: husarion/rosbot-xl:humble-0.10.0-20240202
     network_mode: host
     privileged: true
-    devices:
-      - /dev/bus/usb:/dev/bus/usb
     restart: unless-stopped
     environment: [ ROS_DOMAIN_ID=0 ]
     volumes:
-      - ./config/oak_params.yaml:/config/oak_params.yaml:ro
+      - ./maps:/maps
+      - ./config/oak_1080p.yaml:/config/oak_1080p.yaml:ro
     command: >
       ros2 launch rosbot_xl_bringup bringup.launch.py
         mecanum:=${MECANUM:-True}
-        depthai:=True
-        depthai_params_file:=/config/oak_params.yaml
+        depthai_params_file:=/config/oak_1080p.yaml
 
   ###############################################################
   # 2) teleop_twist_keyboard (mover el robot)
@@ -31,8 +29,11 @@ services:
     tty: true
     environment: [ ROS_DOMAIN_ID=0 ]
     depends_on:
-      rosbot: { condition: service_started }
-    command: ["bash","-lc","source /opt/ros/humble/setup.bash && ros2 run teleop_twist_keyboard teleop_twist_keyboard cmd_vel:=/cmd_vel"]
+      rosbot: { condition: service_started }   # tolera que rosbot no tenga healthcheck
+    command: >
+      bash -c "source /opt/ros/humble/setup.bash &&
+               ros2 run teleop_twist_keyboard teleop_twist_keyboard
+                 cmd_vel:=/cmd_vel"
 
   ###############################################################
   # 3) Navigation 2 (activo: genera /map)
@@ -75,9 +76,9 @@ services:
     restart: unless-stopped
     environment: [ ROS_DOMAIN_ID=0 ]
     command: [ "ros2", "run", "tf2_ros", "static_transform_publisher",
-               "0.12", "0.00", "0.20",         # x  y  z  (ajusta a tu montaje real)
-               "0", "0", "0",                  # roll  pitch  yaw
-               "base_link", "oak_rgb_camera_optical_frame" ]
+               "-0.20", "0.00", "0.30",        # x  y  z
+               "-1.5708", "0", "1.5708",       # roll  pitch  yaw
+               "laser", "oak_rgb_camera_optical_frame" ]
 
 ###############################################################
 # 8) Overlay  (imagen OAK + puntos RPLIDAR)

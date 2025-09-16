@@ -1,23 +1,8 @@
-depthai_ros2:
+/oak:
   ros__parameters:
-    pipeline_type: RGBStereo
     rgb:
-      enable: true
-      resolution: 1080P
-      fps: 30
-    # Algunas builds usan 'stereo_i' y otras 'stereo'.
-    # Dejamos AMBAS activadas para asegurar la salida.
-    stereo_i:
-      enable: true
-      enableDepth: true
-      subpixel: true
-      leftRightCheck: true
-      extended: true
-      fps: 30
-    stereo:
-      enable: true
-      enableDepth: true
-      subpixel: true
-      leftRightCheck: true
-      extended: true
-      fps: 30
+      i_resolution: "1080P"
+      i_fps: 30.0
+      i_publish_topic: false      # NO publicar preview
+      i_enable_preview: false
+      i_output_isp: true          # publicar ISP

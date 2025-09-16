@@ -156,27 +156,26 @@ teleop:
 
 # Grabar un recorrido con teleoperación activa
 record-path name:
-    @echo "Grabando recorrido {{name}} — pulsa Ctrl-C para terminar"
-    docker compose exec -it path_tools bash -lc \
-      "source /opt/ros/humble/setup.bash && \
-       python3 /scripts/path_recorder.py --output /routes/{{name}}.yaml"
+    @echo "Grabando recorrido {{name}} –\u00a0pulsa Ctrl-C para terminar"
+    docker exec -it $(docker compose ps -q path_tools) \
+        bash -c "source /opt/ros/humble/setup.bash && \
+                 python3 /scripts/path_recorder.py \
+                 --output /routes/{{name}}.yaml"
 
-# Reproducir un recorrido en modo FLUIDO (NavigateThroughPoses)
+# Reproducir un recorrido con Nav2 (esquiva de obstáculos)
 play-path name:
-    @echo "Ejecutando recorrido {{name}} (fluido, re-muestreo 5cm, salida robusta)"
-    docker compose exec -it path_tools bash -lc '\
-      set -e; \
-      source /opt/ros/humble/setup.bash && \
-      python3 -u /scripts/path_player.py --file /routes/{{name}}.yaml || \
-      { st=$$?; echo "⛔ path_player.py terminó con código $$st"; exit $$st; }'
+    @echo "Ejecutando recorrido {{name}}"
+    docker exec -it $(docker compose ps -q path_tools) \
+        bash -c "source /opt/ros/humble/setup.bash && \
+                 python3 /scripts/path_player.py \
+                 --file /routes/{{name}}.yaml"
 # ────────────────────────────────────────────────────────────────
 #  start-route  →  Arranca ROSbot con mapa fijo y reproduce una ruta
 #     Uso:  just start-route mi_ruta        # (omite la extensión .yaml)
 # ────────────────────────────────────────────────────────────────
-start-route ruta="r1":
+start-route ruta="mi_ruta":
     # 1) Levanta sólo compose.yaml (sin el override ⇒ no arranca teleop)
-    @SLAM=False MAP=${MAP:-r1} docker compose -f compose.yaml up -d
-    # explore_lite no arranca por defecto (profiles: ["explore"])
+    @SLAM=False docker compose -f compose.yaml up -d
 
     # 2) Espera a que el servicio navigation aparezca sano (máx 60 s)
     @echo "⌛  Esperando a Nav2..."
@@ -192,69 +191,4 @@ start-route ruta="r1":
 #           just start-route mi_ruta
 # ────────────────────────────────────────────────────────────────
 ruta1:
-    just start-route r1
-
-# Alias directo
-r1:
-    just start-route r1
-
-# Genera PointCloud de la OAK (publica /oak/points) dentro de path_tools
-oak-points:
-    CID=$(docker compose ps -q path_tools)
-    docker exec -it $$CID bash -lc \
-      "source /opt/ros/humble/setup.bash && \
-       ros2 run depth_image_proc point_cloud_xyz \
-         --ros-args \
-         -r depth:=/oak/stereo/depth \
-         -r camera_info:=/oak/stereo/camera_info \
-         -r points:=/oak/points"
-
-# Detiene el conversor si quedó corriendo en otra terminal
-oak-points-stop:
-    CID=$(docker compose ps -q path_tools)
-    docker exec -it $$CID bash -lc "pkill -f depth_image_proc || true"
-
-# ============================ OAK / PointCloud =============================
-
-# Reinicia sólo la cámara OAK (contenedor rosbot)
-oak-restart:
-    @docker compose restart rosbot
-
-# Diagnóstico rápido de OAK (nodos, topics y publisher de /oak/points)
-check-oak:
-    @docker compose exec rosbot bash -lc '\
-      source /opt/ros/humble/setup.bash && \
-      echo "— nodes —" && ros2 node list | egrep -i "oak|depthai|point|camera" || true && \
-      echo "— topics —" && ros2 topic list | egrep "^/oak/" || true && \
-      echo "— /oak/points —" && ros2 topic info /oak/points || true && \
-      echo "— stereo —" && (ros2 topic list | egrep "^/oak/stereo/" || echo "NO /oak/stereo/*") \
-    '
-
-# Fallback: si tu build publica /oak/stereo/image_rect, lo relay a /oak/stereo/image_raw
-# (para que el nodo /oak_point_cloud_xyzrgb_node empiece a publicar /oak/points)
-oak-relay-stereo:
-    @docker compose exec -d rosbot bash -lc '\
-      source /opt/ros/humble/setup.bash && \
-      if ros2 topic list | grep -q "^/oak/stereo/image_rect$"; then \
-        echo "Relaying /oak/stereo/image_rect -> /oak/stereo/image_raw"; \
-        ros2 run topic_tools relay /oak/stereo/image_rect /oak/stereo/image_raw ; \
-      else \
-        echo "No existe /oak/stereo/image_rect (no se lanza relay)"; \
-      fi \
-    '
-
-# Comprobación de TF para nube en 3D (repite si da extrapolation justo al arrancar)
-oak-tf:
-    @docker compose exec rosbot bash -lc '\
-      source /opt/ros/humble/setup.bash && \
-      timeout 3 ros2 run tf2_ros tf2_echo base_link oak_rgb_camera_optical_frame || true && \
-      timeout 3 ros2 run tf2_ros tf2_echo map base_link || true \
-    '
-
-# Arrancar explore_lite (perfil 'explore') cuando quieras explorar el mapa
-explore-start:
-    COMPOSE_PROFILES=explore docker compose -f compose.yaml up -d explore_lite
-
-# Parar explore_lite si lo dejaste encendido
-explore-stop:
-    docker compose stop explore_lite || true
+    just start-route mi_ruta
