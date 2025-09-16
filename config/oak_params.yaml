@@ -1,0 +1,25 @@
+camera:
+  ros__parameters:
+    # Pipeline sólo RGB (puedes cambiar a "RGBStereo" más tarde si quieres profundidad)
+    pipeline_type: "RGB"
+
+    # MUY IMPORTANTE: no pares el stream si no hay suscriptores
+    i_enable_lazy_publisher: false
+
+    # Color 1080p a 30 FPS (como te funcionaba antes)
+    color:
+      i_enable: true
+      i_resolution: 1080
+      i_fps: 30
+      publish_raw: true   # publica /oak/rgb/image_raw
+
+    # Desactiva lo demás por ahora (estabiliza primero)
+    stereo:
+      i_enable: false
+    rectify:
+      i_enable: false
+    spatial_nn:
+      i_enable: false
+
+    # (Opcional si ves X_LINK_ERROR inestable)
+    # i_usb_speed: "usb2"
