@@ -1,21 +1,17 @@
 services:
 
-  # --- ROSBOT (drivers + OAK) ---
   rosbot:
     image: husarion/rosbot-xl:humble-0.10.0-20240202
     network_mode: host
     privileged: true
-    devices:
-      - /dev/bus/usb:/dev/bus/usb
     restart: unless-stopped
     environment: [ ROS_DOMAIN_ID=0 ]
     volumes:
-      - ./config/oak_params.yaml:/config/oak_params.yaml:ro
+      - ./config/oak_1080p.yaml:/config/oak_1080p.yaml:ro
     command: >
       ros2 launch rosbot_xl_bringup bringup.launch.py
         mecanum:=${MECANUM:-True}
-        depthai:=True
-        depthai_params_file:=/config/oak_params.yaml
+        depthai_params_file:=/config/oak_1080p.yaml
 
   microros:
     image: husarion/micro-ros-agent:humble-3.1.3-20240126
@@ -27,13 +23,14 @@ services:
   rplidar:
     image: husarion/rplidar:humble-1.0.1-20240104
     restart: unless-stopped
-    # Puerto estable: by-id → alias interno /dev/rplidar
+
+    # Usa el puerto que acabamos de comprobar
     devices:
-      - ${RPLIDAR_BYID:-/dev/ttyUSB0}:/dev/rplidar
+      - /dev/ttyUSB1:/dev/ttyUSB1
 
     command: >
       ros2 launch /husarion_utils/rplidar.launch.py
-        serial_port:=${RPLIDAR_PORT:-/dev/rplidar}
+        serial_port:=/dev/ttyUSB1
         serial_baudrate:=1000000
 
     environment: [ROS_DOMAIN_ID=0]
@@ -42,26 +39,25 @@ services:
              "bash -c 'source /opt/ros/humble/setup.bash && ros2 topic list | grep -q ^/scan$'"]
       interval: 30s
       timeout: 5s
-      start_period: 90s
+      start_period: 40s
       retries: 10
 
-  # --- NAVIGATION (Nav2) ---   <<<<  OJO: ahora está al MISMO NIVEL que rplidar
   navigation:
     image: husarion/navigation2:humble-1.1.12-20240123
     restart: unless-stopped
     depends_on:
-      rplidar: { condition: service_started }
-      rosbot:  { condition: service_healthy }
+      rplidar:
+        condition: service_healthy
+      rosbot:
+        condition: service_healthy
     volumes:
       - ./config/nav2_${CONTROLLER:-rpp}_params.yaml:/params.yaml
       - ./maps:/maps
-    environment:
-      - MAP=${MAP:-r1}
     command: >
       ros2 launch /husarion_utils/bringup_launch.py
         slam:=${SLAM:-True}
         params_file:=/params.yaml
-        map:=/maps/${MAP:-r1}.yaml
+        map:=/maps/almacen_nuevo.yaml
         use_sim_time:=False
 
   path_tools:
@@ -72,6 +68,7 @@ services:
     volumes:
       - ./routes:/routes
       - ./scripts:/scripts:ro
+    # load the ROS environment before idling
     command: bash -c "source /opt/ros/humble/setup.bash && sleep infinity"
     depends_on:
       navigation: { condition: service_started }
@@ -104,7 +101,6 @@ services:
         condition: service_started
 
   explore_lite:
-    profiles: ["explore"]
     build:
       context: .
       dockerfile: Dockerfile.explore_lite

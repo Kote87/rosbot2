@@ -5,7 +5,7 @@ Uso:
   ros2 run path_tools path_recorder.py --output /routes/nombre.yaml
 Se detiene con Ctrl‑C.
 """
-import sys, math, yaml, rclpy
+import sys, math, yaml, signal, rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import PoseWithCovarianceStamped
 
@@ -18,7 +18,7 @@ def yaw_from_quaternion(q):
     cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
     return math.atan2(siny_cosp, cosy_cosp)
 
-DIST_THRESHOLD = 0.80  # metros entre muestras
+DIST_THRESHOLD = 0.10  # metros entre muestras
 
 
 class Recorder(Node):
@@ -68,24 +68,9 @@ def main():
     out_file = sys.argv[sys.argv.index("--output") + 1]
     rclpy.init()
     node = Recorder(out_file)
-    try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        try:
-            node.shutdown()
-        except Exception:
-            pass
-        try:
-            node.destroy_node()
-        except Exception:
-            pass
-        try:
-            rclpy.shutdown()
-        except Exception:
-            pass
-        sys.exit(0)
+    # Ctrl‑C clean
+    signal.signal(signal.SIGINT, lambda *_: node.shutdown() or sys.exit(0))
+    rclpy.spin(node)
 
 
 if __name__ == "__main__":
