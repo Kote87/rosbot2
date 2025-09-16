@@ -14,12 +14,12 @@ services:
     environment: [ ROS_DOMAIN_ID=0 ]
     volumes:
       - ./maps:/maps
-      - ./config/oak_720p.yaml:/config/oak_params.yaml:ro
+      - ./config/oak_1080p.yaml:/config/oak_1080p.yaml:ro
     command: >
       ros2 launch rosbot_xl_bringup bringup.launch.py
         mecanum:=${MECANUM:-True}
         depthai:=True
-        depthai_params_file:=/config/oak_params.yaml
+        depthai_params_file:=/config/oak_1080p.yaml
 
   ###############################################################
   # 2) teleop_twist_keyboard (mover el robot)
