@@ -23,41 +23,38 @@ services:
   rplidar:
     image: husarion/rplidar:humble-1.0.1-20240104
     restart: unless-stopped
-
-    # Usa el puerto que acabamos de comprobar
     devices:
-      - /dev/ttyUSB1:/dev/ttyUSB1
-
+      - ${RPLIDAR_BYID:-/dev/ttyUSB0}:/dev/rplidar
     command: >
       ros2 launch /husarion_utils/rplidar.launch.py
-        serial_port:=/dev/ttyUSB1
-        serial_baudrate:=1000000
+        serial_port:=${RPLIDAR_PORT:-/dev/rplidar}
+        serial_baudrate:=${LIDAR_BAUDRATE:-1000000}
 
-    environment: [ROS_DOMAIN_ID=0]
+    environment: [ ROS_DOMAIN_ID=0 ]
     healthcheck:
       test: ["CMD-SHELL",
              "bash -c 'source /opt/ros/humble/setup.bash && ros2 topic list | grep -q ^/scan$'"]
       interval: 30s
       timeout: 5s
-      start_period: 40s
+      start_period: 90s
       retries: 10
 
   navigation:
     image: husarion/navigation2:humble-1.1.12-20240123
     restart: unless-stopped
     depends_on:
-      rplidar:
-        condition: service_healthy
-      rosbot:
-        condition: service_healthy
+      rplidar: { condition: service_started }
+      rosbot:  { condition: service_started }
     volumes:
       - ./config/nav2_${CONTROLLER:-rpp}_params.yaml:/params.yaml
       - ./maps:/maps
+    environment:
+      - MAP=${MAP:-r1}
     command: >
       ros2 launch /husarion_utils/bringup_launch.py
         slam:=${SLAM:-True}
         params_file:=/params.yaml
-        map:=/maps/almacen_nuevo.yaml
+        map:=/maps/${MAP:-r1}.yaml
         use_sim_time:=False
 
   path_tools:
@@ -106,6 +103,7 @@ services:
       dockerfile: Dockerfile.explore_lite
     network_mode: host
     restart: unless-stopped
+    profiles: ["explore"]
     volumes:
       - ./config/explore_params.yaml:/opt/explore_ws/explore_params.yaml:ro
     depends_on:
