@@ -8,7 +8,6 @@ Se detiene con Ctrl‑C.
 """
 
 import math
-import signal
 import sys
 
 import rclpy
@@ -84,20 +83,11 @@ if __name__ == "__main__":
     out_file = parse_output_arg()
     rclpy.init()
     recorder = Recorder(out_file)
-
-    def _handle_sigint(*_args):
-        recorder.shutdown()
-        if rclpy.ok():
-            rclpy.shutdown()
-        sys.exit(0)
-
-    signal.signal(signal.SIGINT, _handle_sigint)
     try:
         rclpy.spin(recorder)
-    except SystemExit:
+    except KeyboardInterrupt:
         pass
     finally:
         recorder.shutdown()
         recorder.destroy_node()
-        if rclpy.ok():
-            rclpy.shutdown()
+        rclpy.shutdown()
