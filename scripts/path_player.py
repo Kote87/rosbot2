@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
 Reproduce un recorrido YAML de forma FLUIDA con “salto condicionado”:
- - Arranque: /initialpose alineada al 1er tramo + limpieza de costmaps + micro‑avance recto
+ - Arranque: ALINEA la ruta al AMCL ACTUAL (no publica /initialpose salvo que lo pidas)
  - NO salta waypoints hasta que haya PROGRESO REAL (>= min_progress_to_skip, def 0.08 m)
  - Si ya hubo progreso y sigue bloqueado, puede saltar 1 punto y continuar
  - NTP por defecto; fallback a FollowWaypoints si NTP no existe
 Uso:
   python3 /scripts/path_player.py --file /routes/nombre.yaml \
-    [--skip-first 0] \
-    [--initpose {first,ahead,none}] [--init-bump 0.15] \
+    [--skip-first 0] [--align-to-current true] \
+    [--initpose {none,first,ahead}] [--init-bump 0.15] [--nudge false] \
     [--allow-skip true] [--min-progress-to-skip 0.08]
 """
 import argparse, sys, math, time, yaml, rclpy
@@ -19,6 +19,7 @@ from geometry_msgs.msg import PoseStamped, Quaternion, PoseWithCovarianceStamped
 from nav2_msgs.action import NavigateThroughPoses, FollowWaypoints
 from action_msgs.msg import GoalStatus
 from std_srvs.srv import Empty
+from math import atan2, sin, cos, pi
 
 
 def quaternion_from_yaw(yaw):
@@ -31,8 +32,10 @@ class Player(Node):
         self,
         yaml_file: str,
         skip_first: int = 0,
-        initpose: str = "first",
+        align_to_current: bool = True,
+        initpose: str = "none",
         init_bump: float = 0.15,
+        nudge: bool = False,
         allow_skip: bool = True,
         min_progress_to_skip: float = 0.08,
         max_retries: int = 4,
@@ -42,8 +45,10 @@ class Player(Node):
         self.global_frame = self.get_parameter("global_frame").value
         self.max_retries = max_retries
         self.skip_first = max(0, int(skip_first))
-        self.initpose_mode = initpose  # "first" | "ahead" | "none"
+        self.align_to_current = bool(align_to_current)
+        self.initpose_mode = initpose  # "none" | "first" | "ahead"
         self.init_bump = max(0.0, float(init_bump))
+        self.nudge = bool(nudge)
         self.allow_skip = bool(allow_skip)
         self.min_progress_to_skip = max(0.0, float(min_progress_to_skip))
 
@@ -64,7 +69,8 @@ class Player(Node):
         self.cmd_pub = self.create_publisher(Twist, "/cmd_vel", 1)
 
         # AMCL para medir progreso por intento
-        self._amcl_last = None
+        self._amcl_last = None  # (x, y)
+        self._amcl_last_yaw = None  # yaw en radianes
         self._amcl_attempt_start = None
         self.create_subscription(
             PoseWithCovarianceStamped, "/amcl_pose", self._on_amcl, 10
@@ -89,7 +95,10 @@ class Player(Node):
 
     def _on_amcl(self, msg: PoseWithCovarianceStamped):
         p = msg.pose.pose.position
+        q = msg.pose.pose.orientation
+        yaw = 2.0 * atan2(float(q.z), float(q.w))
         self._amcl_last = (float(p.x), float(p.y))
+        self._amcl_last_yaw = float(yaw)
 
     def _progress_since_attempt(self) -> float:
         if self._amcl_last is None or self._amcl_attempt_start is None:
@@ -114,9 +123,9 @@ class Player(Node):
         yaw = self._yaw_first_segment()
         x, y = float(p0.x), float(p0.y)
         if mode == "ahead" and len(self.poses) >= 2 and bump > 0.0:
-            x += math.cos(yaw) * bump
-            y += math.sin(yaw) * bump
-        qz, qw = math.sin(yaw / 2.0), math.cos(yaw / 2.0)
+            x += cos(yaw) * bump
+            y += sin(yaw) * bump
+        qz, qw = sin(yaw / 2.0), cos(yaw / 2.0)
         ip = PoseWithCovarianceStamped()
         ip.header.frame_id = self.global_frame
         ip.pose.pose.position.x = x
@@ -125,7 +134,7 @@ class Player(Node):
         ip.pose.pose.orientation.w = qw
         ip.pose.covariance[0] = 0.05**2
         ip.pose.covariance[7] = 0.05**2
-        ip.pose.covariance[35] = math.radians(5) ** 2
+        ip.pose.covariance[35] = (5.0 * pi / 180.0) ** 2
         pub = self.create_publisher(PoseWithCovarianceStamped, "/initialpose", 1)
         for _ in range(3):
             pub.publish(ip)
@@ -138,9 +147,9 @@ class Player(Node):
         if len(self.poses) >= 2:
             a = self.poses[0].pose.position
             b = self.poses[1].pose.position
-            return math.atan2(float(b.y) - float(a.y), float(b.x) - float(a.x))
+            return atan2(float(b.y) - float(a.y), float(b.x) - float(a.x))
         q = self.poses[0].pose.orientation
-        return 2.0 * math.atan2(float(q.z), float(q.w))
+        return 2.0 * atan2(float(q.z), float(q.w))
 
     def _nudge_forward(self, v=0.10, duration=0.6):
         end = time.time() + float(duration)
@@ -152,8 +161,54 @@ class Player(Node):
             time.sleep(0.05)
         self.cmd_pub.publish(Twist())
 
+    def _align_route_to_current(self):
+        """Alinea toda la ruta al AMCL actual (traslación + rotación).
+        Si no hay /amcl_pose aún (2s), no hace nada."""
+        if not self.poses:
+            return
+        t0 = time.time()
+        while (
+            rclpy.ok()
+            and (self._amcl_last is None or self._amcl_last_yaw is None)
+            and time.time() - t0 < 2.0
+        ):
+            rclpy.spin_once(self, timeout_sec=0.05)
+        if self._amcl_last is None or self._amcl_last_yaw is None:
+            self.get_logger().warn("AMCL no disponible aún; NO se alinea ruta")
+            return
+        # Pose registrada de inicio (r0) y actual (c0)
+        r0 = self.poses[0]
+        rx0, ry0 = float(r0.pose.position.x), float(r0.pose.position.y)
+        rqz, rqw = float(r0.pose.orientation.z), float(r0.pose.orientation.w)
+        ryaw = 2.0 * atan2(rqz, rqw)
+        cx0, cy0 = self._amcl_last
+        cyaw = self._amcl_last_yaw
+        dth = cyaw - ryaw
+        c, s = cos(dth), sin(dth)
+        # Aplica a todos los puntos
+        for ps in self.poses:
+            dx = float(ps.pose.position.x) - rx0
+            dy = float(ps.pose.position.y) - ry0
+            x = cx0 + (dx * c - dy * s)
+            y = cy0 + (dx * s + dy * c)
+            qz, qw = float(ps.pose.orientation.z), float(ps.pose.orientation.w)
+            yaw = 2.0 * atan2(qz, qw) + dth
+            q = quaternion_from_yaw(yaw)
+            ps.pose.position.x = x
+            ps.pose.position.y = y
+            ps.pose.orientation.x = q[0]
+            ps.pose.orientation.y = q[1]
+            ps.pose.orientation.z = q[2]
+            ps.pose.orientation.w = q[3]
+        self.get_logger().info(
+            f"🧭 Ruta alineada a AMCL: Δx={cx0 - rx0:+.2f} Δy={cy0 - ry0:+.2f} Δθ={math.degrees(dth):+.1f}°"
+        )
+
     def _prepare_and_run(self):
-        # Inicializa pose alineada y limpia
+        # 0) (opcional) alinea toda la ruta al AMCL actual
+        if self.align_to_current:
+            self._align_route_to_current()
+        # 1) (opcional) publicar /initialpose si lo pides
         if self.initpose_mode in ("first", "ahead"):
             self._publish_initialpose(
                 self.initpose_mode,
@@ -161,8 +216,9 @@ class Player(Node):
             )
         self._clear_costmaps()
         time.sleep(0.2)
-        # Marca inicio de intento para medir progreso
+        # 2) Marca inicio de intento para medir progreso
         self._amcl_attempt_start = self._amcl_last
+        # 3) Envío de goal
         if self.ntp.wait_for_server(timeout_sec=5.0):
             self.get_logger().info("🚀  /navigate_through_poses")
             self._send_ntp(self.poses, retry=0, phase="start")
@@ -251,10 +307,13 @@ class Player(Node):
         self._clear_costmaps()
         # 1) Si NO hay progreso real, reintenta MISMO set sin saltar: re-alinear + nudge
         if moved < self.min_progress_to_skip and retry < self.max_retries:
+            if self.align_to_current:
+                self._align_route_to_current()
             if self.initpose_mode != "none":
                 self._publish_initialpose("ahead", max(self.init_bump, 0.15))
             time.sleep(0.2)
-            self._nudge_forward(v=0.10, duration=0.6)
+            if self.nudge:
+                self._nudge_forward(v=0.10, duration=0.6)
             time.sleep(0.2)
             # reinicia contador de progreso por intento
             self._amcl_attempt_start = self._amcl_last
@@ -298,16 +357,28 @@ def main():
         "--skip-first", type=int, default=0, help="Saltarse N waypoints iniciales (def=0)"
     )
     ap.add_argument(
+        "--align-to-current",
+        type=str,
+        default="true",
+        help="Alinear la ruta al AMCL actual (def=true)",
+    )
+    ap.add_argument(
         "--initpose",
-        choices=["first", "ahead", "none"],
-        default="first",
-        help="Publicar /initialpose alineada al inicio",
+        choices=["none", "first", "ahead"],
+        default="none",
+        help="Publicar /initialpose (def=none)",
     )
     ap.add_argument(
         "--init-bump",
         type=float,
         default=0.15,
         help="Desplazar /initialpose hacia delante (m) si initpose=ahead",
+    )
+    ap.add_argument(
+        "--nudge",
+        type=str,
+        default="false",
+        help="Hacer micro-avance /cmd_vel si no hay progreso (def=false)",
     )
     ap.add_argument(
         "--allow-skip",
@@ -323,12 +394,21 @@ def main():
     )
     args = ap.parse_args()
     allow_skip = str(args.allow_skip).lower() in ("1", "true", "yes", "y")
+    align_to_current = str(args.align_to_current).lower() in (
+        "1",
+        "true",
+        "yes",
+        "y",
+    )
+    nudge = str(args.nudge).lower() in ("1", "true", "yes", "y")
     rclpy.init()
     node = Player(
         args.file,
         skip_first=args.skip_first,
+        align_to_current=align_to_current,
         initpose=args.initpose,
         init_bump=args.init_bump,
+        nudge=nudge,
         allow_skip=allow_skip,
         min_progress_to_skip=args.min_progress_to_skip,
     )

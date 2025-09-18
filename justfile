@@ -161,20 +161,25 @@ record-path name:
       "source /opt/ros/humble/setup.bash && \
        python3 /scripts/path_recorder.py --output /routes/{{name}}.yaml"
 
-# Reproducir un recorrido con Nav2 (esquiva de obstáculos)
+# Reproducir un recorrido con Nav2 (fluido, alineado a AMCL, sin nudge)
 play-path name:
-    @echo "Ejecutando recorrido {{name}}"
-    docker exec -it $(docker compose ps -q path_tools) \
-        bash -c "source /opt/ros/humble/setup.bash && \
-                 python3 /scripts/path_player.py \
-                 --file /routes/{{name}}.yaml"
+    @echo "Ejecutando recorrido {{name}} (alineado a AMCL, sin nudge, saltos solo con progreso)"
+    docker compose exec -it path_tools bash -lc \
+      "source /opt/ros/humble/setup.bash && \
+       python3 /scripts/path_player.py \
+         --file /routes/{{name}}.yaml \
+         --align-to-current true \
+         --initpose none \
+         --nudge false \
+         --allow-skip true \
+         --min-progress-to-skip 0.08"
 # ────────────────────────────────────────────────────────────────
 #  start-route  →  Arranca ROSbot con mapa fijo y reproduce una ruta
 #     Uso:  just start-route mi_ruta        # (omite la extensión .yaml)
 # ────────────────────────────────────────────────────────────────
 start-route ruta="mi_ruta":
     # 1) Levanta sólo compose.yaml (sin el override ⇒ no arranca teleop)
-    @SLAM=False docker compose -f compose.yaml up -d
+    @SLAM=False MAP=${MAP:-r1} docker compose -f compose.yaml up -d
 
     # 2) Espera a que el servicio navigation aparezca sano (máx 60 s)
     @echo "⌛  Esperando a Nav2..."
