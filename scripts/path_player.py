@@ -67,6 +67,7 @@ class Player(Node):
             Empty, "/global_costmap/clear_entirely_global_costmap"
         )
         self.cmd_pub = self.create_publisher(Twist, "/cmd_vel", 1)
+        self._amcl_ready = False
 
         # AMCL para medir progreso por intento
         self._amcl_last = None  # (x, y)
@@ -99,6 +100,9 @@ class Player(Node):
         yaw = 2.0 * atan2(float(q.z), float(q.w))
         self._amcl_last = (float(p.x), float(p.y))
         self._amcl_last_yaw = float(yaw)
+        cov_yaw = msg.pose.covariance[35]
+        if cov_yaw > 0.0 and cov_yaw < (math.radians(15) ** 2):
+            self._amcl_ready = True
 
     def _progress_since_attempt(self) -> float:
         if self._amcl_last is None or self._amcl_attempt_start is None:
@@ -214,6 +218,11 @@ class Player(Node):
                 self.initpose_mode,
                 self.init_bump if self.initpose_mode == "ahead" else 0.0,
             )
+        t0 = time.time()
+        while not self._amcl_ready and time.time() - t0 < 8.0:
+            rclpy.spin_once(self, timeout_sec=0.1)
+        if not self._amcl_ready:
+            self.get_logger().warn("AMCL no listo tras 8s; continúo igualmente")
         self._clear_costmaps()
         time.sleep(0.2)
         # 2) Marca inicio de intento para medir progreso
