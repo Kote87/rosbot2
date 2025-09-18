@@ -45,6 +45,7 @@ services:
     restart: unless-stopped
     depends_on:
       rplidar: { condition: service_started }
+      scan_filter: { condition: service_started }
       rosbot:  { condition: service_started }
     volumes:
       - ./config/nav2_${CONTROLLER:-rpp}_params.yaml:/params.yaml
@@ -111,25 +112,30 @@ services:
       navigation:
         condition: service_healthy
 
-  # --- Filtro de láser para no "verse a sí mismo" (opcional recomendado) ---
+  # Filtro de /scan → /scan_filtered
   scan_filter:
     image: ros:humble-ros-base
-    network_mode: host
-    restart: unless-stopped
-    command: >
-      bash -lc "
-        apt-get update -qq &&
-        apt-get install -y ros-humble-laser-filters &&
-        source /opt/ros/humble/setup.bash &&
-        ros2 run laser_filters scan_to_scan_filter_chain
-          --ros-args
-          -p scan_topic:=/scan
-          -p output_topic:=/scan_filtered
-          -p filter_config:=/config/scan_filters.yaml
-      "
+    depends_on: [ "rplidar" ]
+    network_mode: service:rosbot
     volumes:
-      - ./config/scan_filters.yaml:/config/scan_filters.yaml:ro
-    depends_on:
-      rplidar:
-        condition: service_started
+      - ./config:/config:ro
+    command: >
+      bash -lc "source /opt/ros/humble/setup.bash &&
+                ros2 run laser_filters scan_to_scan_filter_chain
+                --ros-args -p output:=scan_filtered
+                --params-file /config/laser_filters.yaml"
+    restart: unless-stopped
+
+  twist_mux:
+    image: ros:humble-ros-base
+    depends_on: [ "navigation" ]
+    network_mode: service:rosbot
+    volumes:
+      - ./config:/config:ro
+    command: >
+      bash -lc "source /opt/ros/humble/setup.bash &&
+                ros2 run twist_mux twist_mux
+                --ros-args --params-file /config/twist_mux.yaml
+                -r cmd_vel_out:=/cmd_vel_unstamped"
+    restart: unless-stopped
 

@@ -1,0 +1,22 @@
+# Filtro de láser para no “verse a sí mismo”
+scan_to_scan_filter_chain:
+  ros__parameters:
+    scan_filter_chain:
+      - name: range_clip
+        type: laser_filters/LaserScanRangeFilter
+        params:
+          use_message_range_limits: false
+          lower_threshold: 0.18
+          upper_threshold: 8.0
+          lower_replacement_value: 8.0
+          upper_replacement_value: 8.0
+      - name: footprint_box
+        type: laser_filters/LaserScanBoxFilter
+        params:
+          box_frame: base_link
+          min_x: -0.22
+          max_x:  0.22
+          min_y: -0.20
+          max_y:  0.20
+          min_z: -0.10
+          max_z:  0.40
