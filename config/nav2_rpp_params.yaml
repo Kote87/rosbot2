@@ -213,6 +213,8 @@ local_costmap:
       rolling_window: true
 
       footprint: '[[0.165, 0.145], [0.165, -0.145], [-0.165, -0.145], [-0.165, 0.145]]'
+      footprint_clearing_enabled: true
+      footprint_padding: -0.02
 
       plugins: [obstacle_layer, inflation_layer]
       obstacle_layer:
@@ -220,7 +222,7 @@ local_costmap:
         enabled: true
         observation_sources: scan
         scan:
-          topic: /scan
+          topic: /scan_filtered
           max_obstacle_height: 2.0
           clearing: true
           marking: true
@@ -232,7 +234,7 @@ local_costmap:
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
         enabled: true
-        inflation_radius: 0.35
+        inflation_radius: 0.30
         cost_scaling_factor: 3.0
 
   local_costmap_client:
@@ -259,6 +261,8 @@ global_costmap:
       track_unknown_space: true # if False, treats unknown space as free space, else as unknown space
 
       footprint: '[[0.165, 0.145], [0.165, -0.145], [-0.165, -0.145], [-0.165, 0.145]]'
+      footprint_clearing_enabled: true
+      footprint_padding: -0.02
 
       plugins: [static_layer, obstacle_layer, inflation_layer]
       static_layer:
@@ -270,7 +274,7 @@ global_costmap:
         enabled: true
         observation_sources: scan
         scan:
-          topic: /scan
+          topic: /scan_filtered
           max_obstacle_height: 2.0
           clearing: true
           marking: true
@@ -282,7 +286,7 @@ global_costmap:
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
         enabled: true
-        inflation_radius: 0.35
+        inflation_radius: 0.30
         cost_scaling_factor: 3.0
 
   global_costmap_client:

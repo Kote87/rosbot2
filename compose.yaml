@@ -1,6 +1,7 @@
 services:
 
   rosbot:
+    # (sin cambios en cámara)
     image: husarion/rosbot-xl:humble-0.10.0-20240202
     network_mode: host
     privileged: true
@@ -109,4 +110,26 @@ services:
     depends_on:
       navigation:
         condition: service_healthy
+
+  # --- Filtro de láser para no "verse a sí mismo" (opcional recomendado) ---
+  scan_filter:
+    image: ros:humble-ros-base
+    network_mode: host
+    restart: unless-stopped
+    command: >
+      bash -lc "
+        apt-get update -qq &&
+        apt-get install -y ros-humble-laser-filters &&
+        source /opt/ros/humble/setup.bash &&
+        ros2 run laser_filters scan_to_scan_filter_chain
+          --ros-args
+          -p scan_topic:=/scan
+          -p output_topic:=/scan_filtered
+          -p filter_config:=/config/scan_filters.yaml
+      "
+    volumes:
+      - ./config/scan_filters.yaml:/config/scan_filters.yaml:ro
+    depends_on:
+      rplidar:
+        condition: service_started
 
