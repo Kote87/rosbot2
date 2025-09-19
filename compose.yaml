@@ -43,21 +43,39 @@ services:
   navigation:
     image: husarion/navigation2:humble-1.1.12-20240123
     restart: unless-stopped
+    network_mode: host
     depends_on:
       rplidar: { condition: service_started }
       scan_filter: { condition: service_started }
       rosbot:  { condition: service_started }
+    environment:
+      - ROS_DOMAIN_ID=0
+      - MAP=${MAP:-r1}
+      - RCL_LOG_LEVEL=INFO
     volumes:
       - ./config/nav2_${CONTROLLER:-rpp}_params.yaml:/params.yaml
       - ./maps:/maps
-    environment:
-      - MAP=${MAP:-r1}
     command: >
-      ros2 launch /husarion_utils/bringup_launch.py
-        slam:=${SLAM:-True}
-        params_file:=/params.yaml
-        map:=/maps/${MAP:-r1}.yaml
-        use_sim_time:=False
+      bash -lc "source /opt/ros/humble/setup.bash &&
+                ros2 launch /husarion_utils/bringup_launch.py
+                  slam:=${SLAM:-True}
+                  params_file:=/params.yaml
+                  map:=/maps/${MAP:-r1}.yaml
+                  use_sim_time:=False
+                --ros-args
+                --log-level planner_server:=info
+                --log-level global_costmap.global_costmap:=info
+                --log-level local_costmap.local_costmap:=info"
+    healthcheck:
+      test: ["CMD-SHELL",
+             "bash -lc 'source /opt/ros/humble/setup.bash && \\
+                        ros2 lifecycle get /bt_navigator | grep -q active && \\
+                        ros2 lifecycle get /planner_server | grep -q active && \\
+                        ros2 lifecycle get /controller_server | grep -q active'"]
+      interval: 15s
+      timeout: 5s
+      start_period: 80s
+      retries: 12
 
   path_tools:
     image: husarion/navigation2:humble-1.1.12-20240123
@@ -117,6 +135,8 @@ services:
     image: ros:humble-ros-base
     depends_on: [ "rplidar" ]
     network_mode: service:rosbot
+    environment:
+      - ROS_DOMAIN_ID=0
     volumes:
       - ./config:/config:ro
     command: >
@@ -125,11 +145,20 @@ services:
                 --ros-args -p output:=scan_filtered
                 --params-file /config/laser_filters.yaml"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL",
+             "bash -lc 'source /opt/ros/humble/setup.bash && ros2 topic list | grep -q ^/scan_filtered$'"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 10
 
   twist_mux:
     image: ros:humble-ros-base
     depends_on: [ "navigation" ]
     network_mode: service:rosbot
+    environment:
+      - ROS_DOMAIN_ID=0
     volumes:
       - ./config:/config:ro
     command: >
