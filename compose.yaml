@@ -6,8 +6,7 @@ services:
     network_mode: host
     privileged: true
     restart: unless-stopped
-    environment:
-      ROS_DOMAIN_ID: "0"
+    environment: [ ROS_DOMAIN_ID=0 ]
     volumes:
       - ./config/oak_1080p.yaml:/config/oak_1080p.yaml:ro
     command: >
@@ -24,19 +23,18 @@ services:
 
   rplidar:
     image: husarion/rplidar:humble-1.0.1-20240104
-    network_mode: host                       # <-- CLAVE: mismo namespace que el resto
     restart: unless-stopped
     devices:
       - ${RPLIDAR_BYID:-/dev/ttyUSB0}:/dev/rplidar
-    environment:
-      ROS_DOMAIN_ID: "0"                     # formato diccionario, seguro para YAML
     command: >
       ros2 launch /husarion_utils/rplidar.launch.py
         serial_port:=${RPLIDAR_PORT:-/dev/rplidar}
         serial_baudrate:=${LIDAR_BAUDRATE:-1000000}
+
+    environment: [ ROS_DOMAIN_ID=0 ]
     healthcheck:
       test: ["CMD-SHELL",
-             "bash -lc 'source /opt/ros/humble/setup.bash && ros2 topic list | grep -q ^/scan$'"]
+             "bash -c 'source /opt/ros/humble/setup.bash && ros2 topic list | grep -q ^/scan$'"]
       interval: 30s
       timeout: 5s
       start_period: 90s
@@ -45,42 +43,26 @@ services:
   navigation:
     image: husarion/navigation2:humble-1.1.12-20240123
     restart: unless-stopped
-    network_mode: host
     depends_on:
       rplidar: { condition: service_started }
-      scan_filter: { condition: service_started }
       rosbot:  { condition: service_started }
-    environment:
-      ROS_DOMAIN_ID: "0"
-      MAP: "${MAP:-r1}"
-      RCL_LOG_LEVEL: "info"
-      RCUTILS_CONSOLE_OUTPUT_FORMAT: "[{severity}] {name}: {message}"
     volumes:
       - ./config/nav2_${CONTROLLER:-rpp}_params.yaml:/params.yaml
       - ./maps:/maps
+    environment:
+      - MAP=${MAP:-r1}
     command: >
       ros2 launch /husarion_utils/bringup_launch.py
         slam:=${SLAM:-True}
         params_file:=/params.yaml
         map:=/maps/${MAP:-r1}.yaml
         use_sim_time:=False
-    healthcheck:
-      test: ["CMD-SHELL",
-             "bash -lc 'source /opt/ros/humble/setup.bash && \\
-                        ros2 lifecycle get /bt_navigator | grep -q active && \\
-                        ros2 lifecycle get /planner_server | grep -q active && \\
-                        ros2 lifecycle get /controller_server | grep -q active'"]
-      interval: 15s
-      timeout: 5s
-      start_period: 80s
-      retries: 12
 
   path_tools:
     image: husarion/navigation2:humble-1.1.12-20240123
     network_mode: host
     restart: unless-stopped
-    environment:
-      ROS_DOMAIN_ID: "0"
+    environment: [ ROS_DOMAIN_ID=0 ]
     volumes:
       - ./routes:/routes
       - ./scripts:/scripts:ro
@@ -107,7 +89,6 @@ services:
 
   foxglove-ds:
     image: husarion/foxglove-bridge:humble-0.7.3-20240108
-    network_mode: host                       # <-- CLAVE
     restart: unless-stopped
     command: >
       ros2 launch foxglove_bridge foxglove_bridge_launch.xml
@@ -130,47 +111,25 @@ services:
       navigation:
         condition: service_healthy
 
-  # Filtro de /scan → /scan_filtered
+  # --- Filtro de láser para no "verse a sí mismo" (opcional recomendado) ---
   scan_filter:
     image: ros:humble-ros-base
-    depends_on: [ "rplidar" ]
-    network_mode: service:rosbot
-    environment:
-      ROS_DOMAIN_ID: "0"
-    volumes:
-      - ./config:/config:ro
-    command: >
-      bash -lc "apt-get update -qq &&
-                apt-get install -y -q ros-humble-laser-filters &&
-                source /opt/ros/humble/setup.bash &&
-                ros2 run laser_filters scan_to_scan_filter_chain
-                --ros-args -p output:=scan_filtered
-                --params-file /config/laser_filters.yaml"
+    network_mode: host
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL",
-             "bash -lc 'source /opt/ros/humble/setup.bash && \\
-                        ros2 topic list | grep -q ^/scan$ && \\
-                        ros2 topic list | grep -q ^/scan_filtered$'"]
-      interval: 30s
-      timeout: 5s
-      start_period: 60s
-      retries: 10
-
-  twist_mux:
-    image: ros:humble-ros-base
-    depends_on: [ "navigation" ]
-    network_mode: service:rosbot
-    environment:
-      ROS_DOMAIN_ID: "0"
-    volumes:
-      - ./config:/config:ro
     command: >
-      bash -lc "apt-get update -qq &&
-                apt-get install -y -q ros-humble-twist-mux &&
-                source /opt/ros/humble/setup.bash &&
-                ros2 run twist_mux twist_mux
-                --ros-args --params-file /config/twist_mux.yaml
-                -r cmd_vel_out:=/cmd_vel_unstamped"
-    restart: unless-stopped
+      bash -lc "
+        apt-get update -qq &&
+        apt-get install -y ros-humble-laser-filters &&
+        source /opt/ros/humble/setup.bash &&
+        ros2 run laser_filters scan_to_scan_filter_chain
+          --ros-args
+          -p scan_topic:=/scan
+          -p output_topic:=/scan_filtered
+          -p filter_config:=/config/scan_filters.yaml
+      "
+    volumes:
+      - ./config/scan_filters.yaml:/config/scan_filters.yaml:ro
+    depends_on:
+      rplidar:
+        condition: service_started
 

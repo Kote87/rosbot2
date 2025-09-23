@@ -1,4 +1,3 @@
-# === NAV2 – parámetros saneados para arranque fiable ===
 ---
 amcl:
   ros__parameters:
@@ -15,7 +14,7 @@ amcl:
     always_reset_initial_pose: true
 
     tf_broadcast: true
-    transform_tolerance: 0.50
+    transform_tolerance: 1.0
 
     alpha1: 0.2
     alpha2: 0.2
@@ -36,7 +35,7 @@ amcl:
     laser_max_range: 12.0
     laser_min_range: 0.2
     laser_model_type: likelihood_field
-    laser_max_beams: 40
+    max_beams: 60
     max_particles: 500
     min_particles: 200
 
@@ -224,16 +223,19 @@ local_costmap:
       width: 2
       height: 2
       resolution: 0.04
-      footprint: [[-0.18, -0.16], [0.18, -0.16], [0.18, 0.16], [-0.18, 0.16]]
-      footprint_padding: 0.01
-      plugins: [obstacle_layer, inflation_layer]
+      robot_radius: 0.16
+      plugins: [static_layer, obstacle_layer, inflation_layer]
+      static_layer:
+        plugin: nav2_costmap_2d::StaticLayer
+        enabled: true
+        map_subscribe_transient_local: true
       obstacle_layer:
         plugin: nav2_costmap_2d::ObstacleLayer
         enabled: true
         observation_sources: scan
         scan:
-          topic: /scan_filtered
-          max_obstacle_height: 0.30
+          topic: scan_filtered
+          max_obstacle_height: 2.0
           clearing: true
           marking: true
           data_type: LaserScan
@@ -241,11 +243,10 @@ local_costmap:
           raytrace_min_range: 0.0
           obstacle_max_range: 2.5
           obstacle_min_range: 0.0
-          inf_is_valid: true
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
-        cost_scaling_factor: 2.0
-        inflation_radius: 0.25
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.55
 
       always_send_full_costmap: true
 
@@ -257,19 +258,31 @@ global_costmap:
       global_frame: map
       robot_base_frame: base_link
       use_sim_time: false
+      robot_radius: 0.16
       resolution: 0.05
       track_unknown_space: true
-      footprint: [[-0.18, -0.16], [0.18, -0.16], [0.18, 0.16], [-0.18, 0.16]]
-      footprint_padding: 0.01
-      # *** MUY IMPORTANTE: sin obstáculo de láser en global ***
-      plugins: [static_layer, inflation_layer]
+      plugins: [static_layer, obstacle_layer, inflation_layer]
       static_layer:
         plugin: nav2_costmap_2d::StaticLayer
         map_subscribe_transient_local: true
+      obstacle_layer:
+        plugin: nav2_costmap_2d::ObstacleLayer
+        enabled: true
+        observation_sources: scan
+        scan:
+          topic: scan_filtered
+          max_obstacle_height: 2.0
+          clearing: true
+          marking: true
+          data_type: LaserScan
+          raytrace_max_range: 3.0
+          raytrace_min_range: 0.0
+          obstacle_max_range: 2.5
+          obstacle_min_range: 0.0
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
-        cost_scaling_factor: 2.0
-        inflation_radius: 0.25
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.55
       always_send_full_costmap: true
 
 map_server:
@@ -293,7 +306,7 @@ planner_server:
     planner_plugins: [GridBased]
     GridBased:
       plugin: nav2_smac_planner/SmacPlanner2D
-      tolerance: 0.15 # tolerance for planning if unable to reach exact pose, in meters
+      tolerance: 0.125 # tolerance for planning if unable to reach exact pose, in meters
       downsample_costmap: false # whether or not to downsample the map
       downsampling_factor: 1 # multiplier for the resolution of the costmap layer (e.g. 2 on a 5cm costmap would be 10cm)
       allow_unknown: true # allow traveling in unknown space
