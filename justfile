@@ -177,25 +177,22 @@ play-path name:
          --min-progress-to-skip 0.08"
 # ────────────────────────────────────────────────────────────────
 #  start-route  →  Arranca ROSbot con mapa fijo y reproduce una ruta
-#     Uso:  just start-route mi_ruta        # (omite la extensión .yaml)
+#     Uso:  just start-route mi_ruta
 # ────────────────────────────────────────────────────────────────
 start-route ruta="mi_ruta":
-    # 1) Levanta solo compose.yaml (sin override ⇒ no arranca teleop)
+    # 1) Levanta solo compose.yaml (sin el override ⇒ no arranca teleop)
     SLAM=False MAP=${MAP:-r1} docker compose -f compose.yaml up -d
 
-    # 2) Espera simple a Nav2 (sin healthcheck estricto)
+    # 2) Espera simple a Nav2 (40 s)
     @echo "⌛  Esperando a Nav2 (40 s)…"
     sleep 40
 
-    # 3) Comprobación: lista de acciones
+    # 3) Lista de acciones (diagnóstico)
     @echo "🔎  Acciones expuestas por navigation:"
     docker compose exec -T navigation bash -lc 'source /opt/ros/humble/setup.bash && ros2 action list || true'
 
     # 4) Lanza el reproductor de waypoints dentro de path_tools
     just play-path {{ruta}}
-
-# Si quieres cortar si no hay acciones:
-#     @docker compose exec -T navigation bash -lc 'source /opt/ros/humble/setup.bash && ros2 action list | grep -q /navigate_through_poses' || (echo "⛔  Nav2 sin acciones"; exit 1)
 
 # ────────────────────────────────────────────────────────────────
 #  ruta1  →  atajo sin parámetros. Equivale a:

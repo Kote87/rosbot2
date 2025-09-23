@@ -6,7 +6,8 @@ services:
     network_mode: host
     privileged: true
     restart: unless-stopped
-    environment: [ ROS_DOMAIN_ID=0 ]
+    environment:
+      ROS_DOMAIN_ID: "0"
     volumes:
       - ./config/oak_1080p.yaml:/config/oak_1080p.yaml:ro
     command: >
@@ -30,8 +31,8 @@ services:
       ros2 launch /husarion_utils/rplidar.launch.py
         serial_port:=${RPLIDAR_PORT:-/dev/rplidar}
         serial_baudrate:=${LIDAR_BAUDRATE:-1000000}
-
-    environment: [ ROS_DOMAIN_ID=0 ]
+    environment:
+      ROS_DOMAIN_ID: "0"
     healthcheck:
       test: ["CMD-SHELL",
              "bash -c 'source /opt/ros/humble/setup.bash && ros2 topic list | grep -q ^/scan$'"]
@@ -49,10 +50,8 @@ services:
       scan_filter: { condition: service_started }
       rosbot:  { condition: service_started }
     environment:
-      - ROS_DOMAIN_ID=0
-      - MAP=${MAP:-r1}
-      - RCUTILS_CONSOLE_OUTPUT_FORMAT=[{severity}] {name}: {message}
-      - RCL_LOG_LEVEL=info
+      ROS_DOMAIN_ID: "0"
+      MAP: "${MAP:-r1}"
     volumes:
       - ./config/nav2_${CONTROLLER:-rpp}_params.yaml:/params.yaml
       - ./maps:/maps
@@ -77,7 +76,8 @@ services:
     image: husarion/navigation2:humble-1.1.12-20240123
     network_mode: host
     restart: unless-stopped
-    environment: [ ROS_DOMAIN_ID=0 ]
+    environment:
+      ROS_DOMAIN_ID: "0"
     volumes:
       - ./routes:/routes
       - ./scripts:/scripts:ro
@@ -132,9 +132,7 @@ services:
     depends_on: [ "rplidar" ]
     network_mode: service:rosbot
     environment:
-      - ROS_DOMAIN_ID=0
-      - RCUTILS_CONSOLE_OUTPUT_FORMAT=[{severity}] {name}: {message}
-      - RCL_LOG_LEVEL=info
+      ROS_DOMAIN_ID: "0"
     volumes:
       - ./config:/config:ro
     command: >
@@ -158,7 +156,7 @@ services:
     depends_on: [ "navigation" ]
     network_mode: service:rosbot
     environment:
-      - ROS_DOMAIN_ID=0
+      ROS_DOMAIN_ID: "0"
     volumes:
       - ./config:/config:ro
     command: >
@@ -175,10 +173,7 @@ services:
     network_mode: host
     restart: unless-stopped
     environment:
-      - ROS_DOMAIN_ID=0
-      # Logs más legibles
-      - RCUTILS_CONSOLE_OUTPUT_FORMAT=[{severity}] {name}: {message}
-      - RCL_LOG_LEVEL=info
+      ROS_DOMAIN_ID: "0"
     depends_on:
       navigation:
         condition: service_started
