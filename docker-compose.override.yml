@@ -9,7 +9,10 @@ services:
     network_mode: host
     privileged: true
     restart: unless-stopped
-    environment: [ ROS_DOMAIN_ID=0 ]
+    environment:
+      - ROS_DOMAIN_ID=0
+      - RCUTILS_CONSOLE_OUTPUT_FORMAT=[{severity}] {name}: {message}
+      - RCL_LOG_LEVEL=info
     volumes:
       - ./maps:/maps
       - ./config/oak_1080p.yaml:/config/oak_1080p.yaml:ro
@@ -27,22 +30,25 @@ services:
     privileged: true
     stdin_open: true
     tty: true
-    environment: [ ROS_DOMAIN_ID=0 ]
+    environment:
+      - ROS_DOMAIN_ID=0
+      - RCUTILS_CONSOLE_OUTPUT_FORMAT=[{severity}] {name}: {message}
+      - RCL_LOG_LEVEL=info
     depends_on:
-      rosbot: { condition: service_started }   # tolera que rosbot no tenga healthcheck
+      rosbot: { condition: service_started }
     command: >
-      bash -c "source /opt/ros/humble/setup.bash &&
+      bash -lc "source /opt/ros/humble/setup.bash &&
                ros2 run teleop_twist_keyboard teleop_twist_keyboard
-                 cmd_vel:=/cmd_vel"
+                 cmd_vel:=/teleop/cmd_vel"
 
   ###############################################################
-  # 4) explore_lite dormido (evita exploración autónoma)
+  # 3) explore_lite dormido (evita exploración autónoma)
   ###############################################################
   explore_lite:
     command: [ "bash","-c","echo 'explore_lite disabled'; sleep infinity" ]
 
   ###############################################################
-  # 5) Foxglove‑bridge con buffer / canales amplios
+  # 4) Foxglove‑bridge (igual que base)
   ###############################################################
   foxglove-ds:
     image: husarion/foxglove-bridge:humble-0.7.3-20240108
@@ -52,17 +58,11 @@ services:
         port:=8765
         capabilities:=[clientPublish,connectionGraph,assets]
     depends_on:
-      rplidar:
-        condition: service_started
+      rplidar: { condition: service_started }
 
   ###############################################################
-  # 6) Foxglove Studio (UI) – sin cambios
+  # 5) Static transform  (láser 20 cm detrás, 30 cm arriba)
   ###############################################################
-  # foxglove  se queda tal y como está en tu compose.yaml
-
-###############################################################
-# 7) Static transform  (láser 20 cm detrás, 30 cm arriba)
-###############################################################
   static_tf:
     image: husarion/rosbot-xl:humble-0.10.0-20240202
     network_mode: host
@@ -73,9 +73,9 @@ services:
                "-1.5708", "0", "1.5708",       # roll  pitch  yaw
                "laser", "oak_rgb_camera_optical_frame" ]
 
-###############################################################
-# 8) Overlay  (imagen OAK + puntos RPLIDAR)
-###############################################################
+  ###############################################################
+  # 6) Overlay  (imagen OAK + puntos RPLIDAR)
+  ###############################################################
   overlay:
     image: husarion/rosbot-xl:humble-0.10.0-20240202
     network_mode: host
@@ -83,10 +83,9 @@ services:
     environment: [ ROS_DOMAIN_ID=0 ]
     volumes:
       - ./scripts/lidar_overlay.py:/overlay.py:ro
-    command: [ "bash", "-c",
-               "apt-get update -qq && apt-get install -y python3-opencv && \
+    command: [ "bash", "-lc",
+               "apt-get update -qq && apt-get install -y python3-opencv &&
+                source /opt/ros/humble/setup.bash &&
                 python3 /overlay.py" ]
     depends_on:
-      static_tf:
-        condition: service_started
-
+      static_tf: { condition: service_started }
