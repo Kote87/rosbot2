@@ -1,7 +1,0 @@
-# MUX para teleop + Nav2 → /cmd_vel_unstamped del base controller
-twist_mux:
-  ros__parameters:
-    topics:
-      - {name: nav2,   topic: /cmd_vel,           timeout: 0.5,  priority: 50}
-      - {name: teleop, topic: /teleop/cmd_vel,    timeout: 0.5,  priority: 100}
-    locks: []
