@@ -53,6 +53,8 @@ services:
     environment:
       ROS_DOMAIN_ID: "0"
       MAP: "${MAP:-r1}"
+      RCL_LOG_LEVEL: "info"
+      RCUTILS_CONSOLE_OUTPUT_FORMAT: "[{severity}] {name}: {message}"
     volumes:
       - ./config/nav2_${CONTROLLER:-rpp}_params.yaml:/params.yaml
       - ./maps:/maps
@@ -171,35 +173,4 @@ services:
                 --ros-args --params-file /config/twist_mux.yaml
                 -r cmd_vel_out:=/cmd_vel_unstamped"
     restart: unless-stopped
-
-  map_saver:
-    image: husarion/navigation2:humble-1.1.12-20240123
-    network_mode: host
-    restart: unless-stopped
-    environment:
-      ROS_DOMAIN_ID: "0"
-    depends_on:
-      navigation:
-        condition: service_started
-    command: >
-      bash -lc "source /opt/ros/humble/setup.bash &&
-                ros2 run nav2_map_server map_saver_server"
-
-  ros_diag:
-    image: ros:humble-ros-base
-    network_mode: host
-    restart: unless-stopped
-    environment:
-      ROS_DOMAIN_ID: "0"
-    volumes:
-      - ./scripts/ros_diag.sh:/ros_diag.sh:ro
-    command: >
-      bash -lc "source /opt/ros/humble/setup.bash &&
-                chmod +x /ros_diag.sh &&
-                /ros_diag.sh"
-    depends_on:
-      rplidar:
-        condition: service_started
-      scan_filter:
-        condition: service_started
 
