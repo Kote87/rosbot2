@@ -180,19 +180,31 @@ play-path name:
 #     Uso:  just start-route mi_ruta
 # ────────────────────────────────────────────────────────────────
 start-route ruta="mi_ruta":
-    # 1) Levanta solo compose.yaml (sin el override ⇒ no arranca teleop)
+    # 1) Levanta sólo compose.yaml (sin el override ⇒ no arranca teleop)
     SLAM=False MAP=${MAP:-r1} docker compose -f compose.yaml up -d
 
-    # 2) Espera simple a Nav2 (40 s)
-    @echo "⌛  Esperando a Nav2 (40 s)…"
-    sleep 40
+    # 2) Lanza el reproductor de waypoints dentro de path_tools
+    @echo "▶︎ Ejecutando player: {{ruta}}"
+    -@docker compose exec -it path_tools bash -lc \
+      "source /opt/ros/humble/setup.bash && \
+       python3 /scripts/path_player.py \
+         --file /routes/{{ruta}}.yaml \
+         --align-to-current true \
+         --initpose first \
+         --init-bump 0.20 \
+         --nudge false \
+         --allow-skip true \
+         --min-progress-to-skip 0.08"
 
-    # 3) Lista de acciones (diagnóstico)
-    @echo "🔎  Acciones expuestas por navigation:"
-    docker compose exec -T navigation bash -lc 'source /opt/ros/humble/setup.bash && ros2 action list || true'
-
-    # 4) Lanza el reproductor de waypoints dentro de path_tools
-    just play-path {{ruta}}
+    # 3) Si falló el player, imprime diagnóstico mínimo de navigation
+    @status=$$?; \
+     if [ "$$status" -ne 0 ]; then \
+       echo ""; echo "⛔ Player falló (código $$status). Logs de navigation ↓↓↓"; \
+       docker compose -f compose.yaml logs --no-color --tail=200 navigation || true; \
+       echo ""; echo "🔎 Acciones disponibles ↓↓↓"; \
+       docker compose -f compose.yaml exec -T navigation bash -lc 'source /opt/ros/humble/setup.bash; ros2 action list || true'; \
+       exit $$status; \
+     fi
 
 # ────────────────────────────────────────────────────────────────
 #  ruta1  →  atajo sin parámetros. Equivale a:
