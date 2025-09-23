@@ -180,20 +180,18 @@ play-path name:
 #     Uso:  just start-route mi_ruta        # (omite la extensión .yaml)
 # ────────────────────────────────────────────────────────────────
 start-route ruta="mi_ruta":
-    # 1) Levanta sólo compose.yaml (sin el override ⇒ no arranca teleop)
+    # 1) Levanta solo compose.yaml (sin override ⇒ no arranca teleop)
     SLAM=False MAP=${MAP:-r1} docker compose -f compose.yaml up -d
 
-    # 2) Espera a Nav2 (healthy o acciones expuestas), sin llaves dobles ni indent raro
-    echo "⌛  Esperando a Nav2..."
-    bash -lc 'set -euo pipefail; \
-      for i in {1..40}; do \
-        docker compose -f compose.yaml ps navigation | grep -q "(healthy)" && exit 0; \
-        docker compose -f compose.yaml exec -T navigation bash -lc "source /opt/ros/humble/setup.bash; ros2 action list | grep -q /navigate_through_poses" && exit 0; \
-        sleep 2; \
-      done; \
-      echo "⛔  navigation no healthy / no action server"; exit 1'
+    # 2) Espera simple a Nav2 (sin healthcheck, sin escapes raros)
+    @echo "⌛  Esperando a Nav2 (30 s)…"
+    sleep 30
 
-    # 3) Lanza el reproductor de waypoints dentro de path_tools
+    # 3) Comprobación mínima: ¿está el servidor de acciones?
+    @echo "🔎  Acciones disponibles:"
+    docker compose exec -T navigation bash -lc 'source /opt/ros/humble/setup.bash && ros2 action list'
+
+    # 4) Lanza el reproductor de waypoints dentro de path_tools
     just play-path {{ruta}}
 
 # ────────────────────────────────────────────────────────────────

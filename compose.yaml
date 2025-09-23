@@ -166,3 +166,16 @@ services:
                 -r cmd_vel_out:=/cmd_vel_unstamped"
     restart: unless-stopped
 
+  map_saver:
+    image: husarion/navigation2:humble-1.1.12-20240123
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      - ROS_DOMAIN_ID=0
+    depends_on:
+      navigation:
+        condition: service_started
+    command: >
+      bash -lc "source /opt/ros/humble/setup.bash &&
+                ros2 run nav2_map_server map_saver_server"
+

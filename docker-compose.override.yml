@@ -36,13 +36,6 @@ services:
                  cmd_vel:=/cmd_vel"
 
   ###############################################################
-  # 3) Navigation 2 (activo: genera /map)
-  ###############################################################
-  navigation:
-    volumes:
-      - ./maps:/home/husarion/rosbotxl/maps
-
-  ###############################################################
   # 4) explore_lite dormido (evita exploración autónoma)
   ###############################################################
   explore_lite:
