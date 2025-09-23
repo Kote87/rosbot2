@@ -51,21 +51,15 @@ services:
     environment:
       - ROS_DOMAIN_ID=0
       - MAP=${MAP:-r1}
-      - RCL_LOG_LEVEL=INFO
     volumes:
       - ./config/nav2_${CONTROLLER:-rpp}_params.yaml:/params.yaml
       - ./maps:/maps
     command: >
-      bash -lc "source /opt/ros/humble/setup.bash &&
-                ros2 launch /husarion_utils/bringup_launch.py
-                  slam:=${SLAM:-True}
-                  params_file:=/params.yaml
-                  map:=/maps/${MAP:-r1}.yaml
-                  use_sim_time:=False
-                --ros-args
-                --log-level planner_server:=info
-                --log-level global_costmap.global_costmap:=info
-                --log-level local_costmap.local_costmap:=info"
+      ros2 launch /husarion_utils/bringup_launch.py
+        slam:=${SLAM:-True}
+        params_file:=/params.yaml
+        map:=/maps/${MAP:-r1}.yaml
+        use_sim_time:=False
     healthcheck:
       test: ["CMD-SHELL",
              "bash -lc 'source /opt/ros/humble/setup.bash && \\
@@ -140,7 +134,9 @@ services:
     volumes:
       - ./config:/config:ro
     command: >
-      bash -lc "source /opt/ros/humble/setup.bash &&
+      bash -lc "apt-get update -qq &&
+                apt-get install -y -q ros-humble-laser-filters &&
+                source /opt/ros/humble/setup.bash &&
                 ros2 run laser_filters scan_to_scan_filter_chain
                 --ros-args -p output:=scan_filtered
                 --params-file /config/laser_filters.yaml"
@@ -162,7 +158,9 @@ services:
     volumes:
       - ./config:/config:ro
     command: >
-      bash -lc "source /opt/ros/humble/setup.bash &&
+      bash -lc "apt-get update -qq &&
+                apt-get install -y -q ros-humble-twist-mux &&
+                source /opt/ros/humble/setup.bash &&
                 ros2 run twist_mux twist_mux
                 --ros-args --params-file /config/twist_mux.yaml
                 -r cmd_vel_out:=/cmd_vel_unstamped"
