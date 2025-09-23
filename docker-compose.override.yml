@@ -10,9 +10,7 @@ services:
     privileged: true
     restart: unless-stopped
     environment:
-      - ROS_DOMAIN_ID=0
-      - RCUTILS_CONSOLE_OUTPUT_FORMAT=[{severity}] {name}: {message}
-      - RCL_LOG_LEVEL=info
+      ROS_DOMAIN_ID: "0"
     volumes:
       - ./maps:/maps
       - ./config/oak_1080p.yaml:/config/oak_1080p.yaml:ro
@@ -31,9 +29,7 @@ services:
     stdin_open: true
     tty: true
     environment:
-      - ROS_DOMAIN_ID=0
-      - RCUTILS_CONSOLE_OUTPUT_FORMAT=[{severity}] {name}: {message}
-      - RCL_LOG_LEVEL=info
+      ROS_DOMAIN_ID: "0"
     depends_on:
       rosbot: { condition: service_started }
     command: >
@@ -48,7 +44,7 @@ services:
     command: [ "bash","-c","echo 'explore_lite disabled'; sleep infinity" ]
 
   ###############################################################
-  # 4) Foxglove‑bridge (igual que base)
+  # 4) Foxglove-bridge (igual que base)
   ###############################################################
   foxglove-ds:
     image: husarion/foxglove-bridge:humble-0.7.3-20240108
@@ -58,7 +54,8 @@ services:
         port:=8765
         capabilities:=[clientPublish,connectionGraph,assets]
     depends_on:
-      rplidar: { condition: service_started }
+      rplidar:
+        condition: service_started
 
   ###############################################################
   # 5) Static transform  (láser 20 cm detrás, 30 cm arriba)
@@ -67,10 +64,11 @@ services:
     image: husarion/rosbot-xl:humble-0.10.0-20240202
     network_mode: host
     restart: unless-stopped
-    environment: [ ROS_DOMAIN_ID=0 ]
+    environment:
+      ROS_DOMAIN_ID: "0"
     command: [ "ros2", "run", "tf2_ros", "static_transform_publisher",
-               "-0.20", "0.00", "0.30",        # x  y  z
-               "-1.5708", "0", "1.5708",       # roll  pitch  yaw
+               "-0.20", "0.00", "0.30",
+               "-1.5708", "0", "1.5708",
                "laser", "oak_rgb_camera_optical_frame" ]
 
   ###############################################################
@@ -80,7 +78,8 @@ services:
     image: husarion/rosbot-xl:humble-0.10.0-20240202
     network_mode: host
     restart: unless-stopped
-    environment: [ ROS_DOMAIN_ID=0 ]
+    environment:
+      ROS_DOMAIN_ID: "0"
     volumes:
       - ./scripts/lidar_overlay.py:/overlay.py:ro
     command: [ "bash", "-lc",
@@ -88,4 +87,5 @@ services:
                 source /opt/ros/humble/setup.bash &&
                 python3 /overlay.py" ]
     depends_on:
-      static_tf: { condition: service_started }
+      static_tf:
+        condition: service_started
