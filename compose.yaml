@@ -24,18 +24,19 @@ services:
 
   rplidar:
     image: husarion/rplidar:humble-1.0.1-20240104
+    network_mode: host                       # <-- CLAVE: mismo namespace que el resto
     restart: unless-stopped
     devices:
       - ${RPLIDAR_BYID:-/dev/ttyUSB0}:/dev/rplidar
+    environment:
+      ROS_DOMAIN_ID: "0"                     # formato diccionario, seguro para YAML
     command: >
       ros2 launch /husarion_utils/rplidar.launch.py
         serial_port:=${RPLIDAR_PORT:-/dev/rplidar}
         serial_baudrate:=${LIDAR_BAUDRATE:-1000000}
-    environment:
-      ROS_DOMAIN_ID: "0"
     healthcheck:
       test: ["CMD-SHELL",
-             "bash -c 'source /opt/ros/humble/setup.bash && ros2 topic list | grep -q ^/scan$'"]
+             "bash -lc 'source /opt/ros/humble/setup.bash && ros2 topic list | grep -q ^/scan$'"]
       interval: 30s
       timeout: 5s
       start_period: 90s
@@ -104,6 +105,7 @@ services:
 
   foxglove-ds:
     image: husarion/foxglove-bridge:humble-0.7.3-20240108
+    network_mode: host                       # <-- CLAVE
     restart: unless-stopped
     command: >
       ros2 launch foxglove_bridge foxglove_bridge_launch.xml
@@ -145,7 +147,9 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL",
-             "bash -lc 'source /opt/ros/humble/setup.bash && ros2 topic list | grep -q ^/scan_filtered$'"]
+             "bash -lc 'source /opt/ros/humble/setup.bash && \\
+                        ros2 topic list | grep -q ^/scan$ && \\
+                        ros2 topic list | grep -q ^/scan_filtered$'"]
       interval: 30s
       timeout: 5s
       start_period: 60s
@@ -180,4 +184,22 @@ services:
     command: >
       bash -lc "source /opt/ros/humble/setup.bash &&
                 ros2 run nav2_map_server map_saver_server"
+
+  ros_diag:
+    image: ros:humble-ros-base
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      ROS_DOMAIN_ID: "0"
+    volumes:
+      - ./scripts/ros_diag.sh:/ros_diag.sh:ro
+    command: >
+      bash -lc "source /opt/ros/humble/setup.bash &&
+                chmod +x /ros_diag.sh &&
+                /ros_diag.sh"
+    depends_on:
+      rplidar:
+        condition: service_started
+      scan_filter:
+        condition: service_started
 
