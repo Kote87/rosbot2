@@ -183,31 +183,15 @@ start-route ruta="mi_ruta":
     # 1) Levanta sólo compose.yaml (sin el override ⇒ no arranca teleop)
     SLAM=False MAP=${MAP:-r1} docker compose -f compose.yaml up -d
 
-    # 2) Espera a Nav2:
-    #    - Si hay healthcheck, espera a "(healthy)"
-    #    - Si no lo hay, valida que /navigate_through_poses esté publicado
+    # 2) Espera a Nav2 (healthy o acciones expuestas), sin llaves dobles ni indent raro
     echo "⌛  Esperando a Nav2..."
-    for i in {1..40}; do
-      if docker compose -f compose.yaml ps navigation | grep -q "(healthy)"; then
-        break
-      fi
-      if docker compose -f compose.yaml exec -T navigation bash -lc \
-        "source /opt/ros/humble/setup.bash; ros2 action list | grep -q /navigate_through_poses"
-      then
-        break
-      fi
-      sleep 2
-    done
-
-    # Comprobación final: ¿está healthy o con acciones expuestas?
-    if ! docker compose -f compose.yaml ps navigation | grep -q "(healthy)"; then
-      if ! docker compose -f compose.yaml exec -T navigation bash -lc \
-        "source /opt/ros/humble/setup.bash; ros2 action list | grep -q /navigate_through_poses"
-      then
-        echo "⛔  navigation no healthy / no action server"
-        exit 1
-      fi
-    fi
+    bash -lc 'set -euo pipefail; \
+      for i in {1..40}; do \
+        docker compose -f compose.yaml ps navigation | grep -q "(healthy)" && exit 0; \
+        docker compose -f compose.yaml exec -T navigation bash -lc "source /opt/ros/humble/setup.bash; ros2 action list | grep -q /navigate_through_poses" && exit 0; \
+        sleep 2; \
+      done; \
+      echo "⛔  navigation no healthy / no action server"; exit 1'
 
     # 3) Lanza el reproductor de waypoints dentro de path_tools
     just play-path {{ruta}}
