@@ -158,10 +158,11 @@ teleop:
 
 # Grabar un recorrido con teleoperación activa
 record-path name:
-    @echo "Grabando recorrido {{name}} — pulsa Ctrl-C para terminar"
-    docker compose exec -it path_tools bash -lc \
-      "source /opt/ros/humble/setup.bash && \
-       python3 /scripts/path_recorder.py --output /routes/{{name}}.yaml"
+    @echo "Grabando recorrido {{name}} –\u00a0pulsa Ctrl-C para terminar"
+    docker exec -it $(docker compose ps -q path_tools) \
+        bash -c "source /opt/ros/humble/setup.bash && \
+                 python3 /scripts/path_recorder.py \
+                 --output /routes/{{name}}.yaml"
 
 # Reproducir un recorrido con Nav2 (fluido, alineado a AMCL, sin nudge)
 play-path name:
