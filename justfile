@@ -1,6 +1,4 @@
 set dotenv-load
-# Fuerza bash y aborta en el primer error
-set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
 [private]
 default:
@@ -158,58 +156,31 @@ teleop:
 
 # Grabar un recorrido con teleoperación activa
 record-path name:
-    @echo "Grabando recorrido {{name}} –\u00a0pulsa Ctrl-C para terminar"
-    docker exec -it $(docker compose ps -q path_tools) \
-        bash -c "source /opt/ros/humble/setup.bash && \
-                 python3 /scripts/path_recorder.py \
-                 --output /routes/{{name}}.yaml"
+    CID=$(docker compose ps -q path_tools)
+    docker exec -i $CID bash -c \
+      "source /opt/ros/humble/setup.bash && \
+       python3 /scripts/path_recorder.py --output /routes/{{name}}.yaml"
 
-# Reproducir un recorrido con Nav2 (fluido, alineado a AMCL, sin nudge)
+# Reproducir un recorrido con Nav2 (esquiva de obstáculos)
 play-path name:
-    @echo "Ejecutando recorrido {{name}} (alineado a AMCL, sin nudge, saltos solo con progreso)"
-    docker compose exec -it path_tools bash -lc \
+    CID=$(docker compose ps -q path_tools)
+    docker exec -i $CID bash -c \
       "source /opt/ros/humble/setup.bash && \
-       python3 /scripts/path_player.py \
-         --file /routes/{{name}}.yaml \
-         --align-to-current true \
-         --initpose none \
-         --nudge false \
-         --allow-skip true \
-         --min-progress-to-skip 0.08"
-# ────────────────────────────────────────────────────────────────
-#  start-route  →  Arranca ROSbot con mapa fijo y reproduce una ruta
-#     Uso:  just start-route mi_ruta
-# ────────────────────────────────────────────────────────────────
-start-route ruta="mi_ruta":
-    # 1) Levanta sólo compose.yaml (sin el override ⇒ no arranca teleop)
-    SLAM=False MAP=${MAP:-r1} docker compose -f compose.yaml up -d
+       python3 /scripts/path_player.py --file /routes/{{name}}.yaml"
 
-    # 2) Lanza el reproductor de waypoints dentro de path_tools
-    @echo "▶︎ Ejecutando player: {{ruta}}"
-    -@docker compose exec -it path_tools bash -lc \
-      "source /opt/ros/humble/setup.bash && \
-       python3 /scripts/path_player.py \
-         --file /routes/{{ruta}}.yaml \
-         --align-to-current true \
-         --initpose first \
-         --init-bump 0.20 \
-         --nudge false \
-         --allow-skip true \
-         --min-progress-to-skip 0.08"
+# Iniciar el robot y reproducir el recorrido "circuito1" una vez Nav2 esté listo
+start1:
+    # arranca todos los contenedores SIN reconstruir imágenes
+    @docker compose up -d
 
-    # 3) Si falló el player, imprime diagnóstico mínimo de navigation
-    @status=$$?; \
-     if [ "$$status" -ne 0 ]; then \
-       echo ""; echo "⛔ Player falló (código $$status). Logs de navigation ↓↓↓"; \
-       docker compose -f compose.yaml logs --no-color --tail=200 navigation || true; \
-       echo ""; echo "🔎 Acciones disponibles ↓↓↓"; \
-       docker compose -f compose.yaml exec -T navigation bash -lc 'source /opt/ros/humble/setup.bash; ros2 action list || true'; \
-       exit $$status; \
-     fi
+    # espera hasta 60\s a que navigation reporte healthy
+    @echo "⌛  Esperando a Navigation…"
+    @bash -c 'for n in $$(seq 1 30); do \
+        docker compose ps navigation | grep -q healthy && exit 0; \
+        sleep 2; \
+      done; \
+      echo "⛔  Navigation no healthy"; exit 1'
 
-# ────────────────────────────────────────────────────────────────
-#  ruta1  →  atajo sin parámetros. Equivale a:
-#           just start-route mi_ruta
-# ────────────────────────────────────────────────────────────────
-ruta1:
-    just start-route mi_ruta
+    # ejecuta la ruta circuito1.yaml desde path_tools
+    @echo "▶️  Ejecutando circuito1.yaml"
+    @just play-path circuito1
