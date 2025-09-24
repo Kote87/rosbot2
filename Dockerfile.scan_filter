@@ -1,0 +1,4 @@
+FROM ros:humble-ros-base
+RUN apt-get update && apt-get install -y ros-humble-laser-filters && rm -rf /var/lib/apt/lists/*
+ENV ROS_DOMAIN_ID=0
+CMD ["ros2", "run", "laser_filters", "scan_to_scan_filter_chain", "--ros-args", "--params-file", "/config/laser_filters.yaml"]

@@ -38,6 +38,18 @@ services:
       start_period: 90s
       retries: 10
 
+  scan_filter:
+    build:
+      context: .
+      dockerfile: Dockerfile.scan_filter
+    network_mode: host
+    restart: unless-stopped
+    environment: [ ROS_DOMAIN_ID=0 ]
+    volumes:
+      - ./config/laser_filters.yaml:/config/laser_filters.yaml:ro
+    depends_on:
+      - rplidar
+
   navigation:
     image: husarion/navigation2:humble-1.1.12-20240123
     restart: unless-stopped
