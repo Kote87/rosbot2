@@ -53,13 +53,15 @@ services:
     #    no podrá modificar tu mapa en disco.
     volumes:
       - ./maps:/maps:ro
+      - ./config/nav2_${CONTROLLER:-rpp}_params.yaml:/params.yaml:ro
 
     # 2) lanza bringup en modo navegación *sin* SLAM y
     #    cargando el mapa que ya tienes grabado.
+    # nombre EXACTO del mapa:
     command: >
       ros2 launch rosbot_xl_bringup navigation.launch.py
         slam:=False
-        map:=/maps/almacen1.yaml           # ← nombre EXACTO del mapa
+        map:=/maps/almacen1.yaml
         params_file:=/params.yaml
         use_sim_time:=False
 
