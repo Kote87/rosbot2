@@ -24,17 +24,16 @@ services:
     image: husarion/rplidar:humble-1.0.1-20240104
     restart: unless-stopped
 
-    # Usa un enlace estable al puerto serie del LIDAR
+    # Usa el puerto que acabamos de comprobar
     devices:
-      - ${RPLIDAR_BYID:-/dev/ttyUSB1}:/dev/rplidar
+      - /dev/ttyUSB1:/dev/ttyUSB1
 
     command: >
       ros2 launch /husarion_utils/rplidar.launch.py
-        serial_port:=/dev/rplidar
-        serial_baudrate:=${LIDAR_BAUDRATE:-1000000}
+        serial_port:=/dev/ttyUSB1
+        serial_baudrate:=1000000
 
-    environment:
-      - ROS_DOMAIN_ID=0
+    environment: [ROS_DOMAIN_ID=0]
     healthcheck:
       test: ["CMD-SHELL",
              "bash -c 'source /opt/ros/humble/setup.bash && ros2 topic list | grep -q ^/scan$'"]
@@ -44,37 +43,25 @@ services:
       retries: 10
 
   navigation:
-    image: husarion/rosbot-xl:humble-0.10.0-20240202
-    network_mode: host
-
-    # 1) monta tu carpeta ./maps (la que vimos con almacen1.yaml)
-    #    dentro del contenedor en /maps **solo-lectura**.
-    #    El sufijo ":ro" significa “read-only”: el contenedor
-    #    no podrá modificar tu mapa en disco.
+    image: husarion/navigation2:humble-1.1.12-20240123
+    restart: unless-stopped
+    depends_on:
+      rplidar:
+        condition: service_healthy
+      rosbot:
+        condition: service_healthy
     volumes:
-      - ./maps:/maps:ro
-      - ./config/nav2_${CONTROLLER:-rpp}_params.yaml:/params.yaml:ro
-
-    # 2) lanza bringup en modo navegación *sin* SLAM y
-    #    cargando el mapa que ya tienes grabado.
-    # nombre EXACTO del mapa:
+      - ./config/nav2_${CONTROLLER:-rpp}_params.yaml:/params.yaml
+      - ./maps:/maps
     command: >
-      ros2 launch rosbot_xl_bringup navigation.launch.py
-        slam:=False
-        map:=/maps/almacen1.yaml
+      ros2 launch /husarion_utils/bringup_launch.py
+        slam:=${SLAM:-True}
         params_file:=/params.yaml
+        map:=/maps/almacen_nuevo.yaml
         use_sim_time:=False
 
-    # 3) healthcheck (muchas imágenes de Husarion ya lo traen,
-    #    mantén lo que tengas; si no existe, deja esto)
-    healthcheck:
-      test: ["CMD", "ros2", "topic", "info", "/amcl_pose"]
-      interval: 10s
-      timeout: 5s
-      retries: 6
-
   path_tools:
-    image: husarion/rosbot-xl:humble-0.10.0-20240202
+    image: husarion/navigation2:humble-1.1.12-20240123
     network_mode: host
     restart: unless-stopped
     environment: [ ROS_DOMAIN_ID=0 ]
