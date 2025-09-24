@@ -84,12 +84,9 @@ To ensure proper user configuration, review the content of the `.env` file and s
 - **`SAVE_MAP_PERIOD`** - period of time for autosave map (set `0` to disable),
 - **`CONTROLLER`** - choose the navigation controller type,
 
-The RPLIDAR sensor is configured in `compose.yaml` to use the
-`/dev/rplidar` alias, which by default maps to `/dev/ttyUSB1`. Update the
-`RPLIDAR_BYID` value in `.env` (for example with the
-`/dev/serial/by-id/...` path) if your hardware appears on a different
-port. The baud rate is controlled via the `LIDAR_BAUDRATE` setting in
-`.env`.
+The RPLIDAR sensor is configured in `compose.yaml` to use `/dev/ttyUSB1`
+with a baud rate of `1000000`. Adjust these settings in the Compose file
+if your hardware requires a different configuration.
 
 ### 🤖 Step 4: Running Navigation & Mapping
 
