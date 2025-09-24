@@ -14,7 +14,7 @@ amcl:
     always_reset_initial_pose: true
 
     tf_broadcast: true
-    transform_tolerance: 0.40
+    transform_tolerance: 1.0
 
     alpha1: 0.2
     alpha2: 0.2
@@ -35,7 +35,7 @@ amcl:
     laser_max_range: 12.0
     laser_min_range: 0.2
     laser_model_type: likelihood_field
-    laser_max_beams: 40
+    max_beams: 60
     max_particles: 500
     min_particles: 200
 
@@ -49,8 +49,8 @@ amcl:
     save_pose_rate: 0.5
     sigma_hit: 0.2
 
-    update_min_a: 0.2
-    update_min_d: 0.05
+    update_min_a: 0.3
+    update_min_d: 0.2
 
     z_hit: 0.5
     z_max: 0.05
@@ -77,8 +77,6 @@ bt_navigator:
     global_frame: map
     robot_base_frame: base_link
     odom_topic: odometry/filtered
-    # Árbol con replanificación y recuperaciones (fluido y robusto)
-    default_nav_through_poses_bt_xml: /opt/ros/humble/share/nav2_bt_navigator/behavior_trees/navigate_through_poses_w_replanning_and_recovery.xml
 
     bt_loop_duration: 10
     default_server_timeout: 20
@@ -123,39 +121,37 @@ controller_server:
   ros__parameters:
     use_sim_time: false
 
-    controller_frequency: 7.0
+    controller_frequency: 5.0
 
     # if velocity is below threshold value it is set to 0
     min_x_velocity_threshold: 0.01    # Measured
     min_y_velocity_threshold: 0.01    # Measured
     min_theta_velocity_threshold: 0.1 # Measured
 
-    progress_checker_plugin: progress_checker
     progress_checker:
-      plugin: nav2_controller::SimpleProgressChecker
-      required_movement_radius: 0.05
-      movement_time_allowance: 25.0
+      plugin: "nav2_controller::SimpleProgressChecker"
 
     goal_checker_plugin: goal_checker
     goal_checker:
       plugin: nav2_controller::SimpleGoalChecker
-      stateful: false
-      xy_goal_tolerance: 0.25
-      yaw_goal_tolerance: 0.60
+      xy_goal_tolerance: 0.1
+      yaw_goal_tolerance: 0.3
+      stateful: true # if stateful is True goal checker will not check if the xy position matches again once it is found to be True.
 
     controller_plugins: [FollowPath]
     FollowPath:
       plugin: nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController
 
       # Velocity/acceleration limits also have to be adjusted in the velocity smoother
-      desired_linear_vel: 0.45
+      desired_linear_vel: 0.4
+      lookahead_dist: 0.5
       transform_tolerance: 0.25
 
       # Adaptive lookahead gain
-      use_velocity_scaled_lookahead_dist: true
-      min_lookahead_dist: 0.35
-      max_lookahead_dist: 0.90
-      lookahead_time: 1.2
+      use_velocity_scaled_lookahead_dist: false # Currently doesn't work, uncomment in next release
+      lookahead_time: 1.5
+      min_lookahead_dist: 0.3
+      max_lookahead_dist: 0.6
 
       # Approach to goal
       min_approach_linear_velocity: 0.2
@@ -179,8 +175,7 @@ controller_server:
       regulated_linear_scaling_min_speed: 0.25
 
       allow_reversing: false
-      # Movimiento fluido sin girar en sitio en cada punto
-      use_rotate_to_heading: false
+      use_rotate_to_heading: true
       rotate_to_heading_min_angle: 0.7
 
       # it is only used when rotating to heading (use_rotate_to_heading)
@@ -213,16 +208,18 @@ local_costmap:
       rolling_window: true
 
       footprint: '[[0.165, 0.145], [0.165, -0.145], [-0.165, -0.145], [-0.165, 0.145]]'
-      footprint_clearing_enabled: true
-      footprint_padding: -0.02
 
-      plugins: [obstacle_layer, inflation_layer]
+      plugins: [static_layer, obstacle_layer, inflation_layer]
+      static_layer:
+        plugin: nav2_costmap_2d::StaticLayer
+        enabled: true
+        map_subscribe_transient_local: true
       obstacle_layer:
         plugin: nav2_costmap_2d::ObstacleLayer
         enabled: true
         observation_sources: scan
         scan:
-          topic: /scan_filtered
+          topic: scan_filtered
           max_obstacle_height: 2.0
           clearing: true
           marking: true
@@ -234,8 +231,8 @@ local_costmap:
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
         enabled: true
-        inflation_radius: 0.30
         cost_scaling_factor: 3.0
+        inflation_radius: 0.55
 
   local_costmap_client:
     ros__parameters:
@@ -261,8 +258,6 @@ global_costmap:
       track_unknown_space: true # if False, treats unknown space as free space, else as unknown space
 
       footprint: '[[0.165, 0.145], [0.165, -0.145], [-0.165, -0.145], [-0.165, 0.145]]'
-      footprint_clearing_enabled: true
-      footprint_padding: -0.02
 
       plugins: [static_layer, obstacle_layer, inflation_layer]
       static_layer:
@@ -274,7 +269,7 @@ global_costmap:
         enabled: true
         observation_sources: scan
         scan:
-          topic: /scan_filtered
+          topic: scan_filtered
           max_obstacle_height: 2.0
           clearing: true
           marking: true
@@ -286,8 +281,8 @@ global_costmap:
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
         enabled: true
-        inflation_radius: 0.30
         cost_scaling_factor: 3.0
+        inflation_radius: 0.55
 
   global_costmap_client:
     ros__parameters:
@@ -450,11 +445,7 @@ waypoint_follower:
     use_sim_time: false
     loop_rate: 5
     stop_on_failure: false
-    waypoint_task_executor_plugin: wait_at_waypoint
-    wait_at_waypoint:
-      plugin: nav2_waypoint_follower::WaitAtWaypoint
-      enabled: true
-      waypoint_pause_duration: 200
+    waypoint_task_executor_plugin: ""
 
 smoother_server:
   ros__parameters:

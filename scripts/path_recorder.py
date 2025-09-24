@@ -1,18 +1,11 @@
 #!/usr/bin/env python3
-"""Graba waypoints a partir de /amcl_pose mientras el robot se mueve.
-
+"""
+Graba waypoints a partir de /amcl_pose mientras el robot se mueve.
 Uso:
-    ros2 run path_tools path_recorder.py --output /routes/nombre.yaml
-
+  ros2 run path_tools path_recorder.py --output /routes/nombre.yaml
 Se detiene con Ctrl‑C.
 """
-
-import math
-import signal
-import sys
-
-import rclpy
-import yaml
+import sys, math, yaml, signal, rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import PoseWithCovarianceStamped
 
@@ -20,12 +13,9 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 def yaw_from_quaternion(q):
     """Convierte un quaternion (x,y,z,w) en yaw (rad)."""
     x, y, z, w = q
-    # Fórmula estándar yaw = atan2(2(wz + xy), 1 - 2(y² + z²))
-    siny_cosp = 2.0 * (w * z + x * y)
-    cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
-    return math.atan2(siny_cosp, cosy_cosp)
+    return math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z))
 
-DIST_THRESHOLD = 0.35  # metros entre muestras
+DIST_THRESHOLD = 0.10  # metros entre muestras
 
 
 class Recorder(Node):
@@ -34,7 +24,6 @@ class Recorder(Node):
         self.out_file = out_file
         self.last_pose = None
         self.path = []
-        self._shutdown = False
         self.create_subscription(
             PoseWithCovarianceStamped, "/amcl_pose", self.on_pose, qos_profile=10
         )
@@ -62,42 +51,24 @@ class Recorder(Node):
 
     # --- finish ----------------------------------------------------
     def shutdown(self):
-        if self._shutdown:
-            return
-        self._shutdown = True
         if not self.path:
             self.get_logger().warn("Ningún punto grabado; fichero vacío.")
             return
-        with open(self.out_file, "w", encoding="utf-8") as handle:
-            yaml.safe_dump({"waypoints": self.path}, handle, sort_keys=False)
+        yaml.safe_dump({"waypoints": self.path}, open(self.out_file, "w"), sort_keys=False)
         self.get_logger().info(f"⏹️  Guardado {len(self.path)} puntos → {self.out_file}")
 
 
-def parse_output_arg() -> str:
+def main():
     if "--output" not in sys.argv:
         print("Requiere --output /ruta/archivo.yaml", file=sys.stderr)
         sys.exit(1)
-    return sys.argv[sys.argv.index("--output") + 1]
+    out_file = sys.argv[sys.argv.index("--output") + 1]
+    rclpy.init()
+    node = Recorder(out_file)
+    # Ctrl‑C clean
+    signal.signal(signal.SIGINT, lambda *_: node.shutdown() or sys.exit(0))
+    rclpy.spin(node)
 
 
 if __name__ == "__main__":
-    out_file = parse_output_arg()
-    rclpy.init()
-    recorder = Recorder(out_file)
-
-    def _handle_sigint(*_args):
-        recorder.shutdown()
-        if rclpy.ok():
-            rclpy.shutdown()
-        sys.exit(0)
-
-    signal.signal(signal.SIGINT, _handle_sigint)
-    try:
-        rclpy.spin(recorder)
-    except SystemExit:
-        pass
-    finally:
-        recorder.shutdown()
-        recorder.destroy_node()
-        if rclpy.ok():
-            rclpy.shutdown()
+    main()
