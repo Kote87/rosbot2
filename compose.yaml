@@ -24,16 +24,17 @@ services:
     image: husarion/rplidar:humble-1.0.1-20240104
     restart: unless-stopped
 
-    # Usa el puerto que acabamos de comprobar
+    # Usa un enlace estable al puerto serie del LIDAR
     devices:
-      - /dev/ttyUSB1:/dev/ttyUSB1
+      - ${RPLIDAR_BYID:-/dev/ttyUSB1}:/dev/rplidar
 
     command: >
       ros2 launch /husarion_utils/rplidar.launch.py
-        serial_port:=/dev/ttyUSB1
-        serial_baudrate:=1000000
+        serial_port:=/dev/rplidar
+        serial_baudrate:=${LIDAR_BAUDRATE:-1000000}
 
-    environment: [ROS_DOMAIN_ID=0]
+    environment:
+      - ROS_DOMAIN_ID=0
     healthcheck:
       test: ["CMD-SHELL",
              "bash -c 'source /opt/ros/humble/setup.bash && ros2 topic list | grep -q ^/scan$'"]
