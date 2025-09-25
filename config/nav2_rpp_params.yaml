@@ -137,8 +137,8 @@ controller_server:
     goal_checker_plugin: goal_checker
     goal_checker:
       plugin: nav2_controller::SimpleGoalChecker
-      xy_goal_tolerance: 0.1
-      yaw_goal_tolerance: 0.3
+      xy_goal_tolerance: 0.50
+      yaw_goal_tolerance: 0.60
       stateful: true # if stateful is True goal checker will not check if the xy position matches again once it is found to be True.
 
     controller_plugins: [FollowPath]
