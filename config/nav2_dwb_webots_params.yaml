@@ -223,7 +223,8 @@ local_costmap:
       width: 2
       height: 2
       resolution: 0.04
-      robot_radius: 0.16
+      robot_radius: 0.22
+      footprint_padding: 0.01
       plugins: [static_layer, obstacle_layer, inflation_layer]
       static_layer:
         plugin: nav2_costmap_2d::StaticLayer
@@ -242,11 +243,14 @@ local_costmap:
           inf_is_valid: true
           obstacle_range: 6.0
           raytrace_range: 8.0
+          observation_persistence: 0.0
+          expected_update_rate: 0.0
           max_obstacle_height: 2.0
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
-        cost_scaling_factor: 3.0
-        inflation_radius: 0.55
+        enabled: true
+        inflation_radius: 0.28
+        cost_scaling_factor: 4.0
 
       always_send_full_costmap: true
 
@@ -258,7 +262,8 @@ global_costmap:
       global_frame: map
       robot_base_frame: base_link
       use_sim_time: false
-      robot_radius: 0.16
+      robot_radius: 0.22
+      footprint_padding: 0.01
       resolution: 0.05
       track_unknown_space: true
       plugins: [static_layer, obstacle_layer, inflation_layer]
@@ -278,11 +283,14 @@ global_costmap:
           inf_is_valid: true
           obstacle_range: 6.0
           raytrace_range: 8.0
+          observation_persistence: 0.0
+          expected_update_rate: 0.0
           max_obstacle_height: 2.0
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
-        cost_scaling_factor: 3.0
-        inflation_radius: 0.55
+        enabled: true
+        inflation_radius: 0.28
+        cost_scaling_factor: 4.0
       always_send_full_costmap: true
 
 map_server:
@@ -356,8 +364,11 @@ slam_toolbox:
     transform_publish_period: 0.04
     map_update_interval: 3.0
     resolution: 0.05
+    min_lidar_range: 0.35
+    max_lidar_range: 8.0
     max_laser_range: 12.0 #for rastering images
-    minimum_time_interval: 0.5
+    minimum_time_between_update: 0.20
+    minimum_time_interval: 0.20
     transform_timeout: 0.2
     tf_buffer_duration: 10.
     stack_size_to_use: 40000000 #// program needs a larger stack size to serialize large maps
@@ -367,13 +378,14 @@ slam_toolbox:
     # https://github.com/cyberbotics/webots/issues/5540
     use_scan_matching: false
     use_scan_barycenter: true
-    minimum_travel_distance: 0.4
-    minimum_travel_heading: 0.5
+    minimum_travel_distance: 0.10
+    minimum_travel_heading: 0.10
     scan_buffer_size: 10
     scan_buffer_maximum_scan_distance: 10.0
     link_match_minimum_response_fine: 0.1
     link_scan_maximum_distance: 1.5
     loop_search_maximum_distance: 3.0
+    use_loop_closing: true
     do_loop_closing: true
     loop_match_minimum_chain_size: 10
     loop_match_maximum_variance_coarse: 3.0
