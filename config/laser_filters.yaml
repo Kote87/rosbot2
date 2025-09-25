@@ -8,7 +8,7 @@ scan_to_scan_filter_chain:
       - name: range
         type: laser_filters/LaserScanRangeFilter
         params:
-          lower_threshold: 0.35          # antes 0.18–0.25; súbelo a 0.35 m
+          lower_threshold: 0.18      # ignora retornos < 18 cm (ajusta 0.18–0.25)
           upper_threshold: 20.0
           lower_replacement_value: inf
           upper_replacement_value: inf
@@ -16,20 +16,23 @@ scan_to_scan_filter_chain:
       - name: shadows
         type: laser_filters/ScanShadowsFilter
         params:
-          min_angle: 10.0                 # deg
-          max_angle: 170.0                # deg
+          min_angle: 10.0
+          max_angle: 170.0
           neighbors: 1
           window: 1
 
-      - name: median
-        type: laser_filters/LaserScanMedianFilter
-        params:
-          window: 5                       # suaviza “salpicaduras” puntuales
+      # Opcional: enmascara un sector frontal/trasero si el soporte del sensor entra en el haz
+      # - name: sector
+      #   type: laser_filters/LaserScanAngularBoundsFilter
+      #   params:
+      #     lower_angle: -0.35      # ~ -20 grados
+      #     upper_angle:  0.35      # ~ +20 grados
 
-      - name: box
-        type: laser_filters/LaserScanBoxFilter
-        params:
-          box_frame: laser
-          min_x: -0.25; max_x: 0.25       # “burbuja” que cubre chasis/soporte
-          min_y: -0.22; max_y: 0.22
-          min_z: -0.10; max_z: 0.40
+      # Opcional: quita puntos dentro de una caja centrada en el sensor (si aún te “ves” a ti mismo)
+      # - name: box
+      #   type: laser_filters/LaserScanBoxFilter
+      #   params:
+      #     box_frame: laser
+      #     min_x: -0.20; max_x: 0.20
+      #     min_y: -0.20; max_y: 0.20
+      #     min_z: -0.10; max_z: 0.40
