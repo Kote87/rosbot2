@@ -190,15 +190,20 @@ start-route ruta="mi_ruta":
 
     # 2b) Limpieza de costmaps robusta (no bloquear si el servicio varía o tarda)
     @docker compose exec navigation bash -lc 'set -e; source /opt/ros/humble/setup.bash; \
-      has(){ ros2 service list | grep -qx "$$1"; }; \
-      call(){ S=$$1; T=$$(ros2 service type "$$S" 2>/dev/null || true); \
-              [ -n "$$T" ] && timeout 6 ros2 service call "$$S" "$$T" "{}" || true; }; \
-      # Local: intenta ambos nombres conocidos \
-      if   has /local_costmap/clear_entire_costmap; then call /local_costmap/clear_entire_costmap; \
-      elif has /local_costmap/clear_entirely_local_costmap; then call /local_costmap/clear_entirely_local_costmap; fi; \
-      # Global: intenta ambos nombres \
-      if   has /global_costmap/clear_entire_costmap; then call /global_costmap/clear_entire_costmap; \
-      elif has /global_costmap/clear_entirely_global_costmap; then call /global_costmap/clear_entirely_global_costmap; fi'
+      for SVC in /local_costmap/clear_entire_costmap /local_costmap/clear_entirely_local_costmap; do \
+        if ros2 service list | grep -qx "$$SVC"; then \
+          TYPE=$$(ros2 service type "$$SVC" 2>/dev/null || true); \
+          if [ -n "$$TYPE" ]; then timeout 6 ros2 service call "$$SVC" "$$TYPE" "{}" || true; fi; \
+          break; \
+        fi; \
+      done; \
+      for SVC in /global_costmap/clear_entire_costmap /global_costmap/clear_entirely_global_costmap; do \
+        if ros2 service list | grep -qx "$$SVC"; then \
+          TYPE=$$(ros2 service type "$$SVC" 2>/dev/null || true); \
+          if [ -n "$$TYPE" ]; then timeout 6 ros2 service call "$$SVC" "$$TYPE" "{}" || true; fi; \
+          break; \
+        fi; \
+      done'
 
     # 3) Lanza el reproductor de waypoints dentro de path_tools
     @just play-path {{ruta}}
