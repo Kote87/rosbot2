@@ -1,38 +1,24 @@
 scan_to_scan_filter_chain:
   ros__parameters:
-    # Publica en /scan_filtered por defecto (el nodo usa el mismo frame que /scan)
     output_queue_size: 1
-
-    # Cadena de filtros (puedes ajustar umbrales si tu chasis está más cerca/lejos)
     scan_filter_chain:
-      - name: range
+      - name: range_near_clip
         type: laser_filters/LaserScanRangeFilter
         params:
-          lower_threshold: 0.18      # ignora retornos < 18 cm (ajusta 0.18–0.25)
-          upper_threshold: 20.0
-          lower_replacement_value: inf
-          upper_replacement_value: inf
+          lower_threshold: 0.30          # sube a 0.35 si aún te “ves”
+          upper_threshold: 12.0
+          lower_replacement_value: nan   # CLAVE: descarta cercano (no limpia)
+          upper_replacement_value: inf   # lejos normal
 
       - name: shadows
         type: laser_filters/ScanShadowsFilter
         params:
-          min_angle: 10.0
+          min_angle: 0.0
           max_angle: 170.0
-          neighbors: 1
-          window: 1
+          neighbors: 20
+          window: 0
 
-      # Opcional: enmascara un sector frontal/trasero si el soporte del sensor entra en el haz
-      # - name: sector
-      #   type: laser_filters/LaserScanAngularBoundsFilter
-      #   params:
-      #     lower_angle: -0.35      # ~ -20 grados
-      #     upper_angle:  0.35      # ~ +20 grados
-
-      # Opcional: quita puntos dentro de una caja centrada en el sensor (si aún te “ves” a ti mismo)
-      # - name: box
-      #   type: laser_filters/LaserScanBoxFilter
-      #   params:
-      #     box_frame: laser
-      #     min_x: -0.20; max_x: 0.20
-      #     min_y: -0.20; max_y: 0.20
-      #     min_z: -0.10; max_z: 0.40
+      - name: median
+        type: laser_filters/LaserScanMedianFilter
+        params:
+          window: 5

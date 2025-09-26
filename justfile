@@ -182,6 +182,11 @@ start-route ruta="mi_ruta":
         docker compose ps navigation | grep -q "(healthy)" && exit 0; \
         sleep 2; done; echo "⛔  navigation no healthy"; exit 1'
 
+    # 2b) Arranque limpio: borra posibles "manchas" residuales
+    @docker compose exec navigation bash -lc 'source /opt/ros/humble/setup.bash; \
+        ros2 service call /local_costmap/clear_entire_costmap nav2_msgs/srv/ClearEntireCostmap "{}"; \
+        ros2 service call /global_costmap/clear_entire_costmap nav2_msgs/srv/ClearEntireCostmap "{}"'
+
     # 3) Lanza el reproductor de waypoints dentro de path_tools
     @just play-path {{ruta}}
 

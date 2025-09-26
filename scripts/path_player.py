@@ -47,6 +47,10 @@ class Player(Node):
     # --- Acción FollowWaypoints ------------------------------------
     def _send_goal(self):
         self.client.wait_for_server()
+        # Sella timestampts para evitar "mensajes viejos" en filtros/TF
+        now = self.get_clock().now().to_msg()
+        for ps in self.waypoints:
+            ps.header.stamp = now
         goal_msg = FollowWaypoints.Goal(poses=self.waypoints)
         self.get_logger().info("🚀  Enviando acción /follow_waypoints …")
         send_future = self.client.send_goal_async(goal_msg, feedback_callback=self._feedback)
@@ -75,8 +79,12 @@ def main():
         sys.exit(1)
     yaml_file = sys.argv[sys.argv.index("--file") + 1]
     rclpy.init()
-    Player(yaml_file)
-    rclpy.spin(Player)
+    node = Player(yaml_file)
+    try:
+        rclpy.spin(node)
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
 
 
 if __name__ == "__main__":
