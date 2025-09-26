@@ -178,14 +178,27 @@ start-route ruta="mi_ruta":
 
     # 2) Espera a que el servicio navigation aparezca sano (máx 60 s)
     @echo "⌛  Esperando a Nav2..."
-    @bash -c 'for i in {1..30}; do \
+    @bash -lc 'for i in {1..30}; do \
         docker compose ps navigation | grep -q "(healthy)" && exit 0; \
         sleep 2; done; echo "⛔  navigation no healthy"; exit 1'
 
-    # 2b) Arranque limpio: borra posibles "manchas" residuales
+    # 2a) Espera explícita a que las acciones de Nav2 estén disponibles
     @docker compose exec navigation bash -lc 'source /opt/ros/humble/setup.bash; \
-        ros2 service call /local_costmap/clear_entire_costmap nav2_msgs/srv/ClearEntireCostmap "{}"; \
-        ros2 service call /global_costmap/clear_entire_costmap nav2_msgs/srv/ClearEntireCostmap "{}"'
+      for i in $(seq 1 30); do \
+        ros2 action list | grep -Eq "/follow_waypoints|/navigate_through_poses" && exit 0; \
+        sleep 1; done; echo "⛔  acciones de Nav2 no disponibles"; exit 1'
+
+    # 2b) Limpieza de costmaps robusta (no bloquear si el servicio varía o tarda)
+    @docker compose exec navigation bash -lc 'set -e; source /opt/ros/humble/setup.bash; \
+      has(){ ros2 service list | grep -qx "$$1"; }; \
+      call(){ S=$$1; T=$$(ros2 service type "$$S" 2>/dev/null || true); \
+              [ -n "$$T" ] && timeout 6 ros2 service call "$$S" "$$T" "{}" || true; }; \
+      # Local: intenta ambos nombres conocidos \
+      if   has /local_costmap/clear_entire_costmap; then call /local_costmap/clear_entire_costmap; \
+      elif has /local_costmap/clear_entirely_local_costmap; then call /local_costmap/clear_entirely_local_costmap; fi; \
+      # Global: intenta ambos nombres \
+      if   has /global_costmap/clear_entire_costmap; then call /global_costmap/clear_entire_costmap; \
+      elif has /global_costmap/clear_entirely_global_costmap; then call /global_costmap/clear_entirely_global_costmap; fi'
 
     # 3) Lanza el reproductor de waypoints dentro de path_tools
     @just play-path {{ruta}}
