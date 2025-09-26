@@ -188,19 +188,17 @@ start-route ruta="mi_ruta":
         ros2 action list | grep -Eq "/follow_waypoints|/navigate_through_poses" && exit 0; \
         sleep 1; done; echo "⛔  acciones de Nav2 no disponibles"; exit 1'
 
-    # 2b) Limpieza de costmaps robusta (no bloquear si el servicio varía o tarda)
-    @docker compose exec navigation bash -lc 'set -e; source /opt/ros/humble/setup.bash; \
-      for SVC in /local_costmap/clear_entire_costmap /local_costmap/clear_entirely_local_costmap; do \
-        if ros2 service list | grep -qx "$$SVC"; then \
-          TYPE=$$(ros2 service type "$$SVC" 2>/dev/null || true); \
-          if [ -n "$$TYPE" ]; then timeout 6 ros2 service call "$$SVC" "$$TYPE" "{}" || true; fi; \
+    # 2b) Limpieza de costmaps sin bloquear (prueba ambos nombres, 1s de timeout)
+    @docker compose exec navigation bash -lc 'source /opt/ros/humble/setup.bash; \
+      for S in /local_costmap/clear_entire_costmap /local_costmap/clear_entirely_local_costmap; do \
+        if ros2 service list | grep -qx "$$S"; then \
+          timeout 1 ros2 service call "$$S" nav2_msgs/srv/ClearEntireCostmap "{}" || true; \
           break; \
         fi; \
       done; \
-      for SVC in /global_costmap/clear_entire_costmap /global_costmap/clear_entirely_global_costmap; do \
-        if ros2 service list | grep -qx "$$SVC"; then \
-          TYPE=$$(ros2 service type "$$SVC" 2>/dev/null || true); \
-          if [ -n "$$TYPE" ]; then timeout 6 ros2 service call "$$SVC" "$$TYPE" "{}" || true; fi; \
+      for S in /global_costmap/clear_entire_costmap /global_costmap/clear_entirely_global_costmap; do \
+        if ros2 service list | grep -qx "$$S"; then \
+          timeout 1 ros2 service call "$$S" nav2_msgs/srv/ClearEntireCostmap "{}" || true; \
           break; \
         fi; \
       done'
