@@ -188,20 +188,11 @@ start-route ruta="mi_ruta":
         ros2 action list | grep -Eq "/follow_waypoints|/navigate_through_poses" && exit 0; \
         sleep 1; done; echo "⛔  acciones de Nav2 no disponibles"; exit 1'
 
-    # 2b) Limpieza de costmaps sin bloquear (prueba ambos nombres, 1s de timeout)
-    @docker compose exec navigation bash -lc 'source /opt/ros/humble/setup.bash; \
-      for S in /local_costmap/clear_entire_costmap /local_costmap/clear_entirely_local_costmap; do \
-        if ros2 service list | grep -qx "$$S"; then \
-          timeout 1 ros2 service call "$$S" nav2_msgs/srv/ClearEntireCostmap "{}" || true; \
-          break; \
-        fi; \
-      done; \
-      for S in /global_costmap/clear_entire_costmap /global_costmap/clear_entirely_global_costmap; do \
-        if ros2 service list | grep -qx "$$S"; then \
-          timeout 1 ros2 service call "$$S" nav2_msgs/srv/ClearEntireCostmap "{}" || true; \
-          break; \
-        fi; \
-      done'
+    # 2b) Limpieza robusta de costmaps (intenta ambos servicios conocidos)
+    @docker compose exec navigation bash /ros2_ws/scripts/clear_costmaps.sh || true
+
+    # 2c) Verifica que los costmaps realmente están suscritos a /scan_filtered
+    @docker compose exec navigation bash -lc 'python3 /ros2_ws/scripts/nav2_guard.py'
 
     # 3) Lanza el reproductor de waypoints dentro de path_tools
     @just play-path {{ruta}}

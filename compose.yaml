@@ -59,6 +59,7 @@ services:
     volumes:
       - ./config/nav2_${CONTROLLER:-rpp}_params.yaml:/params.yaml
       - ./maps:/maps
+      - ./scripts:/ros2_ws/scripts:ro
     environment:
       - MAP=${MAP:-r1}
     command: >
