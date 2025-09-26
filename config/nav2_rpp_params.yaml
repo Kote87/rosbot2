@@ -121,7 +121,7 @@ controller_server:
   ros__parameters:
     use_sim_time: false
 
-    controller_frequency: 5.0
+    controller_frequency: 20.0
 
     # if velocity is below threshold value it is set to 0
     min_x_velocity_threshold: 0.01    # Measured
@@ -135,11 +135,16 @@ controller_server:
       movement_time_allowance: 10.0
 
     goal_checker_plugin: goal_checker
+    general_goal_checker:
+      plugin: "nav2_controller::SimpleGoalChecker"
+      xy_goal_tolerance: 0.35
+      yaw_goal_tolerance: 0.35
+      stateful: false
     goal_checker:
       plugin: nav2_controller::SimpleGoalChecker
-      xy_goal_tolerance: 0.50
-      yaw_goal_tolerance: 0.60
-      stateful: true # if stateful is True goal checker will not check if the xy position matches again once it is found to be True.
+      xy_goal_tolerance: 0.35
+      yaw_goal_tolerance: 0.35
+      stateful: false # if stateful is True goal checker will not check if the xy position matches again once it is found to be True.
 
     controller_plugins: [FollowPath]
     FollowPath:
@@ -201,8 +206,8 @@ local_costmap:
       global_frame: odom
       robot_base_frame: base_link
 
-      update_frequency: 3.0
-      publish_frequency: 2.0
+      update_frequency: 10.0
+      publish_frequency: 5.0
 
       width: 4
       height: 4
@@ -211,19 +216,15 @@ local_costmap:
       always_send_full_costmap: true
       rolling_window: true
 
-      plugins: [static_layer, obstacle_layer, inflation_layer]
-      static_layer:
-        plugin: nav2_costmap_2d::StaticLayer
-        enabled: true
-        map_subscribe_transient_local: true
+      plugins: [obstacle_layer, inflation_layer]
       obstacle_layer:
-        plugin: "nav2_costmap_2d::ObstacleLayer"
+        plugin: nav2_costmap_2d::ObstacleLayer
         enabled: true
         footprint_clearing_enabled: true
         observation_sources: scan
         scan:
           topic: /scan_filtered
-          data_type: "LaserScan"
+          data_type: LaserScan
           marking: true
           clearing: true
           inf_is_valid: true
@@ -233,7 +234,7 @@ local_costmap:
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
         enabled: true
-        inflation_radius: 0.05
+        inflation_radius: 0.07
         cost_scaling_factor: 8.0
 
       robot_radius: 0.18
@@ -255,8 +256,8 @@ global_costmap:
       global_frame: map
       robot_base_frame: base_link
 
-      update_frequency: 1.0
-      publish_frequency: 1.0
+      update_frequency: 5.0
+      publish_frequency: 2.0
 
       resolution: 0.05
 
@@ -269,13 +270,13 @@ global_costmap:
         enabled: true
         map_subscribe_transient_local: true
       obstacle_layer:
-        plugin: "nav2_costmap_2d::ObstacleLayer"
+        plugin: nav2_costmap_2d::ObstacleLayer
         enabled: true
         footprint_clearing_enabled: true
         observation_sources: scan
         scan:
           topic: /scan_filtered
-          data_type: "LaserScan"
+          data_type: LaserScan
           marking: true
           clearing: true
           inf_is_valid: true
@@ -285,7 +286,7 @@ global_costmap:
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
         enabled: true
-        inflation_radius: 0.05
+        inflation_radius: 0.07
         cost_scaling_factor: 8.0
 
       robot_radius: 0.18
