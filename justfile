@@ -154,9 +154,9 @@ teleop:
 
 diag-scan:
     @docker compose exec rplidar bash -lc 'source /opt/ros/humble/setup.bash; \
-      echo "--- topics ---"; ros2 topic list | grep -E "/scan($|_)"; \
-      echo "--- /scan_filtered info ---"; ros2 topic info /scan_filtered || true; \
-      echo "--- 1 mensaje ---"; ros2 topic echo -n1 /scan_filtered || true'
+      echo "== Driver =="; ros2 node list | grep sllidar || echo "❌ sllidar no levantó"; \
+      echo "== /scan hz =="; (ros2 topic hz /scan -w 15 || true); \
+      echo "== 5 muestras =="; ros2 topic echo -n5 /scan || true'
 
 diag-costmaps:
     @docker compose exec navigation bash -lc 'source /opt/ros/humble/setup.bash; \
@@ -179,15 +179,19 @@ record-path name:
 # Reproducir un recorrido con Nav2 (esquiva de obstáculos)
 play-path name:
     @echo "Ejecutando recorrido {{name}}"
-    docker exec -it $(docker compose ps -q path_tools) \
+    @docker compose exec -T path_tools \
         bash -c "source /opt/ros/humble/setup.bash && \
                  python3 /scripts/path_player.py \
                  --file /routes/{{name}}.yaml"
 
-play-ntp name:
-    @docker compose exec path_tools \
-      bash -lc 'source /opt/ros/humble/setup.bash && \
-                python3 /scripts/path_player_ntp.py --file /routes/{{name}}.yaml'
+# ────────────────────────────────────────────────────────────────
+#  play-poses  →  Navega con NavigateThroughPoses (NTP)
+# ────────────────────────────────────────────────────────────────
+play-poses name:
+    @docker compose exec -T path_tools \
+        bash -c "source /opt/ros/humble/setup.bash && \
+                 python3 /scripts/nav_through_poses.py \
+                 --file /routes/{{name}}.yaml"
 # ────────────────────────────────────────────────────────────────
 #  start-route  →  Arranca ROSbot con mapa fijo y reproduce una ruta
 #     Uso:  just start-route mi_ruta        # (omite la extensión .yaml)
@@ -200,7 +204,7 @@ start-route ruta="mi_ruta":
     @echo "⌛  Esperando a Nav2..."
     @bash -lc 'for i in {1..30}; do \
         docker compose ps navigation | grep -q "(healthy)" && exit 0; \
-        sleep 2; done; echo "⛔  navigation no healthy"; exit 1'
+        sleep 2; done; echo "⛔  navigation no healthy"; docker compose logs navigation | tail -n 200; exit 1'
 
     # 2a) Espera explícita a que las acciones de Nav2 estén disponibles
     @docker compose exec navigation bash -lc 'source /opt/ros/humble/setup.bash; \
@@ -208,23 +212,49 @@ start-route ruta="mi_ruta":
         ros2 action list | grep -Eq "/follow_waypoints|/navigate_through_poses" && exit 0; \
         sleep 1; done; echo "⛔  acciones de Nav2 no disponibles"; exit 1'
 
-    # 2b) Limpieza robusta de costmaps (intenta ambos servicios conocidos)
-    @docker compose exec navigation bash /ros2_ws/scripts/clear_costmaps.sh || true
-
-    # 2c) Verifica que los costmaps realmente están suscritos a /scan_filtered
-    @docker compose exec navigation bash -lc 'python3 /ros2_ws/scripts/nav2_guard.py'
+    # 2b) Limpieza de costmaps robusta (no bloquear si el servicio varía o tarda)
+    @docker compose exec navigation bash -lc 'set -e; source /opt/ros/humble/setup.bash; \
+      _call(){ S=$$1; T=$$(ros2 service type "$$S" 2>/dev/null || true); [ -n "$$T" ] && timeout 6 ros2 service call "$$S" "$$T" "{}" || true; }; \
+      for S in /local_costmap/clear_entire_costmap /local_costmap/clear_entirely_local_costmap; do ros2 service list | grep -qx "$$S" && _call "$$S" && break; done; \
+      for S in /global_costmap/clear_entire_costmap /global_costmap/clear_entirely_global_costmap; do ros2 service list | grep -qx "$$S" && _call "$$S" && break; done'
 
     # 3) Lanza el reproductor de waypoints dentro de path_tools
     @just play-path {{ruta}}
 
-start-route-ntp ruta="mi_ruta":
+# ────────────────────────────────────────────────────────────────
+#  start-ntp  →  Igual que start-route pero con NavigateThroughPoses
+#     Uso:  just start-ntp mi_ruta
+# ────────────────────────────────────────────────────────────────
+start-ntp ruta="mi_ruta":
     @SLAM=False docker compose -f compose.yaml up -d
     @echo "⌛  Esperando a Nav2..."
-    @bash -lc 'for i in {1..30}; do docker compose ps navigation | grep -q "(healthy)" && exit 0; sleep 2; done; echo "⛔ navigation no healthy"; exit 1'
+    @bash -lc 'for i in {1..30}; do \
+        docker compose ps navigation | grep -q "(healthy)" && exit 0; \
+        sleep 2; done; echo "⛔  navigation no healthy"; docker compose logs navigation | tail -n 200; exit 1'
     @docker compose exec navigation bash -lc 'source /opt/ros/humble/setup.bash; \
-      for i in $(seq 1 30); do ros2 action list | grep -q "/navigate_through_poses" && exit 0; sleep 1; done; exit 1'
-    @just diag-costmaps
-    @just play-ntp {{ruta}}
+      for i in $(seq 1 30); do \
+        ros2 action list | grep -q "/navigate_through_poses" && exit 0; \
+        sleep 1; done; echo "⛔  /navigate_through_poses no disponible"; exit 1'
+    @docker compose exec navigation bash -lc 'set -e; source /opt/ros/humble/setup.bash; \
+      _call(){ S=$$1; T=$$(ros2 service type "$$S" 2>/dev/null || true); [ -n "$$T" ] && timeout 6 ros2 service call "$$S" "$$T" "{}" || true; }; \
+      for S in /local_costmap/clear_entire_costmap /local_costmap/clear_entirely_local_costmap; do ros2 service list | grep -qx "$$S" && _call "$$S" && break; done; \
+      for S in /global_costmap/clear_entire_costmap /global_costmap/clear_entirely_global_costmap; do ros2 service list | grep -qx "$$S" && _call "$$S" && break; done'
+    @just play-poses {{ruta}}
+
+# ────────────────────────────────────────────────────────────────
+#  nav2-logs / nav2-health / set-controller
+# ────────────────────────────────────────────────────────────────
+nav2-logs:
+    @docker compose logs --tail=200 navigation
+
+nav2-health:
+    @docker compose exec navigation bash -lc 'source /opt/ros/humble/setup.bash; \
+      echo "== Nodes =="; ros2 node list || true; \
+      echo "== Services (controller_server/get_state) =="; ros2 service list | grep controller_server/get_state || echo "❌ no está"; \
+      echo "== Topics scan =="; ros2 topic list | grep scan || echo "❌ no /scan en este contenedor"'
+
+set-controller ctrl="rpp":
+    @bash -lc 'sed -i -E "s#^(CONTROLLER=).*#\\1{{ctrl}}#" env.txt; cat env.txt | grep CONTROLLER'
 
 # ────────────────────────────────────────────────────────────────
 #  ruta1  →  atajo sin parámetros. Equivale a:
