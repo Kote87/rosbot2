@@ -152,6 +152,21 @@ teleop:
     @echo "╰───────────────────────────────────────────"
     docker attach $(docker compose -f compose.yaml -f docker-compose.override.yml ps -q teleop)
 
+diag-scan:
+    @docker compose exec rplidar bash -lc 'source /opt/ros/humble/setup.bash; \
+      echo "--- topics ---"; ros2 topic list | grep -E "/scan($|_)"; \
+      echo "--- /scan_filtered info ---"; ros2 topic info /scan_filtered || true; \
+      echo "--- 1 mensaje ---"; ros2 topic echo -n1 /scan_filtered || true'
+
+diag-costmaps:
+    @docker compose exec navigation bash -lc 'source /opt/ros/humble/setup.bash; \
+      echo "--- local costmap observation_sources ---"; \
+      ros2 param get /local_costmap/local_costmap obstacle_layer.observation_sources || true; \
+      echo "--- local costmap scan.topic ---"; \
+      ros2 param get /local_costmap/local_costmap obstacle_layer.scan.topic || true; \
+      echo "--- plugins local ---"; \
+      ros2 param get /local_costmap/local_costmap plugins || true'
+
 # ------------------ Rutas grabadas ---------------------------------
 
 # Grabar un recorrido con teleoperación activa
@@ -168,6 +183,11 @@ play-path name:
         bash -c "source /opt/ros/humble/setup.bash && \
                  python3 /scripts/path_player.py \
                  --file /routes/{{name}}.yaml"
+
+play-ntp name:
+    @docker compose exec path_tools \
+      bash -lc 'source /opt/ros/humble/setup.bash && \
+                python3 /scripts/path_player_ntp.py --file /routes/{{name}}.yaml'
 # ────────────────────────────────────────────────────────────────
 #  start-route  →  Arranca ROSbot con mapa fijo y reproduce una ruta
 #     Uso:  just start-route mi_ruta        # (omite la extensión .yaml)
@@ -196,6 +216,15 @@ start-route ruta="mi_ruta":
 
     # 3) Lanza el reproductor de waypoints dentro de path_tools
     @just play-path {{ruta}}
+
+start-route-ntp ruta="mi_ruta":
+    @SLAM=False docker compose -f compose.yaml up -d
+    @echo "⌛  Esperando a Nav2..."
+    @bash -lc 'for i in {1..30}; do docker compose ps navigation | grep -q "(healthy)" && exit 0; sleep 2; done; echo "⛔ navigation no healthy"; exit 1'
+    @docker compose exec navigation bash -lc 'source /opt/ros/humble/setup.bash; \
+      for i in $(seq 1 30); do ros2 action list | grep -q "/navigate_through_poses" && exit 0; sleep 1; done; exit 1'
+    @just diag-costmaps
+    @just play-ntp {{ruta}}
 
 # ────────────────────────────────────────────────────────────────
 #  ruta1  →  atajo sin parámetros. Equivale a:
