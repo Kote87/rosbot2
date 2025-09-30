@@ -221,15 +221,14 @@ local_costmap:
       use_sim_time: false
       transform_tolerance: 0.30
       rolling_window: true
-      width: 4.0
-      height: 4.0
-      resolution: 0.05
+      width: 2
+      height: 2
+      resolution: 0.04
       robot_radius: 0.18
-      footprint_padding: 0.01
+      footprint_padding: 0.005
       plugins: [obstacle_layer, inflation_layer]
-
       obstacle_layer:
-        plugin: "nav2_costmap_2d::ObstacleLayer"
+        plugin: nav2_costmap_2d::ObstacleLayer
         enabled: true
         footprint_clearing_enabled: true
         observation_sources: scan
@@ -239,18 +238,14 @@ local_costmap:
           marking: true
           clearing: true
           inf_is_valid: true
-          obstacle_min_range: 0.05
-          obstacle_max_range: 6.0
-          raytrace_min_range: 0.0
-          raytrace_max_range: 7.0
+          obstacle_range: 5.0
+          raytrace_range: 6.0
           observation_persistence: 0.0
-          expected_update_rate: 0.0
-
       inflation_layer:
-        plugin: "nav2_costmap_2d::InflationLayer"
+        plugin: nav2_costmap_2d::InflationLayer
         enabled: true
         inflation_radius: 0.10
-        cost_scaling_factor: 6.0
+        cost_scaling_factor: 7.5
 
       always_send_full_costmap: true
 
@@ -264,18 +259,32 @@ global_costmap:
       use_sim_time: false
       transform_tolerance: 0.30
       robot_radius: 0.18
-      footprint_padding: 0.01
+      footprint_padding: 0.005
       resolution: 0.05
       track_unknown_space: true
-      plugins: [static_layer, inflation_layer]
+      plugins: [static_layer, obstacle_layer, inflation_layer]
       static_layer:
         plugin: nav2_costmap_2d::StaticLayer
         map_subscribe_transient_local: true
-      inflation_layer:
-        plugin: "nav2_costmap_2d::InflationLayer"
+      obstacle_layer:
+        plugin: nav2_costmap_2d::ObstacleLayer
         enabled: true
-        inflation_radius: 0.12
-        cost_scaling_factor: 4.0
+        footprint_clearing_enabled: true
+        observation_sources: scan
+        scan:
+          topic: /scan_filtered
+          data_type: LaserScan
+          marking: true
+          clearing: true
+          inf_is_valid: true
+          obstacle_range: 5.0
+          raytrace_range: 6.0
+          observation_persistence: 0.0   # NO arrastre
+      inflation_layer:
+        plugin: nav2_costmap_2d::InflationLayer
+        enabled: true
+        inflation_radius: 0.10
+        cost_scaling_factor: 7.5
       always_send_full_costmap: true
 
 map_server:
@@ -437,10 +446,11 @@ waypoint_follower:
     use_sim_time: false
     loop_rate: 20
     stop_on_failure: false
-    waypoint_task_executor:
+    waypoint_task_executor_plugin: "wait_at_waypoint"
+    wait_at_waypoint:
       plugin: "nav2_waypoint_follower::WaitAtWaypoint"
-      enabled: true
-      wait_duration: 0.0s
+      enabled: false
+      waypoint_pause_duration: 0
 
 velocity_smoother:
   ros__parameters:
