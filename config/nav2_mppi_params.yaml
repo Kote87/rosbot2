@@ -195,7 +195,7 @@ controller_server:
       ObstaclesCritic:
         enabled: true
         cost_power: 1
-        cost_weight: 2.5
+        cost_weight: 3.0
         repulsion_weight: 1.5
         critical_weight: 20.0
         consider_footprint: false
@@ -261,15 +261,15 @@ local_costmap:
           inf_is_valid: true
           obstacle_range: 6.5
           raytrace_range: 8.0
-          observation_persistence: 0.35
+          observation_persistence: 0.40
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
         enabled: true
-        inflation_radius: 0.20
-        cost_scaling_factor: 3.5
+        inflation_radius: 0.22
+        cost_scaling_factor: 3.0
 
       robot_radius: 0.18
-      footprint_padding: 0.04
+      footprint_padding: 0.05
 
       always_send_full_costmap: true
 
