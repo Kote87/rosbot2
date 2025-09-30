@@ -18,7 +18,7 @@ def yaw_from_quaternion(q):
     cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
     return math.atan2(siny_cosp, cosy_cosp)
 
-DIST_THRESHOLD = 0.50  # metros entre muestras
+DIST_THRESHOLD = 0.80  # metros entre muestras
 
 
 class Recorder(Node):

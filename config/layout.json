@@ -289,7 +289,7 @@
       "minLogLevel": 2,
       "nameFilter": {
         "foxglove_bridge": {
-          "visible": true
+          "visible": false
         }
       }
     },
