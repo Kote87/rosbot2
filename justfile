@@ -168,6 +168,14 @@ play-path name:
         bash -c "source /opt/ros/humble/setup.bash && \
                  python3 /scripts/path_player.py \
                  --file /routes/{{name}}.yaml"
+
+## Reproducir un recorrido con NTP (NavigateThroughPoses) – movimiento fluido
+play-ntp name:
+    @echo "Ejecutando recorrido (NTP) {{name}}"
+    docker exec -it $(docker compose ps -q path_tools) \
+        bash -c "source /opt/ros/humble/setup.bash && \
+                 python3 /scripts/nav_through_poses.py \
+                 --file /routes/{{name}}.yaml"
 # ────────────────────────────────────────────────────────────────
 #  start-route  →  Arranca ROSbot con mapa fijo y reproduce una ruta
 #     Uso:  just start-route mi_ruta        # (omite la extensión .yaml)
@@ -189,13 +197,42 @@ start-route ruta="mi_ruta":
         sleep 1; done; echo "⛔  acciones de Nav2 no disponibles"; exit 1'
 
     # 2b) Limpieza robusta de costmaps (intenta ambos servicios conocidos)
-    @docker compose exec navigation bash /ros2_ws/scripts/clear_costmaps.sh || true
+    @docker compose exec navigation bash -lc 'export AMENT_TRACE_SETUP_FILES=""; /ros2_ws/scripts/clear_costmaps.sh' || true
 
     # 2c) Verifica que los costmaps realmente están suscritos a /scan_filtered
     @docker compose exec navigation bash -lc 'python3 /ros2_ws/scripts/nav2_guard.py'
 
     # 3) Lanza el reproductor de waypoints dentro de path_tools
     @just play-path {{ruta}}
+
+## ───────────────────────────────────────────────────────────────
+##  start-ntp  →  Igual que start-route pero usando NTP (fluido)
+##      Uso:  just start-ntp mi_ruta
+## ───────────────────────────────────────────────────────────────
+start-ntp ruta="mi_ruta":
+    # 1) Levanta solo compose.yaml (sin override ⇒ no teleop)
+    @SLAM=False docker compose -f compose.yaml up -d
+
+    # 2) Espera a Nav2 'healthy'
+    @echo "⌛  Esperando a Nav2..."
+    @bash -lc 'for i in {1..30}; do \
+        docker compose ps navigation | grep -q "(healthy)" && exit 0; \
+        sleep 2; done; echo "⛔  navigation no healthy"; exit 1'
+
+    # 2a) Espera a que /navigate_through_poses esté disponible
+    @docker compose exec navigation bash -lc 'source /opt/ros/humble/setup.bash; \
+      for i in $(seq 1 30); do \
+        ros2 action list | grep -q "/navigate_through_poses" && exit 0; \
+        sleep 1; done; echo "⛔  /navigate_through_poses no disponible"; exit 1'
+
+    # 2b) Limpieza de costmaps (evita aviso de AMENT_TRACE_SETUP_FILES)
+    @docker compose exec navigation bash -lc 'export AMENT_TRACE_SETUP_FILES=""; /ros2_ws/scripts/clear_costmaps.sh' || true
+
+    # 2c) Verifica que los costmaps están suscritos a /scan_filtered
+    @docker compose exec navigation bash -lc 'python3 /ros2_ws/scripts/nav2_guard.py'
+
+    # 3) Lanza NTP dentro de path_tools
+    @just play-ntp {{ruta}}
 
 # ────────────────────────────────────────────────────────────────
 #  ruta1  →  atajo sin parámetros. Equivale a:
