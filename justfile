@@ -182,7 +182,7 @@ play-ntp name:
 # ────────────────────────────────────────────────────────────────
 start-route ruta="mi_ruta":
     # 1) Levanta sólo compose.yaml (sin el override ⇒ no arranca teleop)
-    @SLAM=False CONTROLLER=mppi docker compose -f compose.yaml up -d
+    @SLAM=False docker compose -f compose.yaml up -d
 
     # 2) Espera a que el servicio navigation aparezca sano (máx 60 s)
     @echo "⌛  Esperando a Nav2..."
@@ -211,7 +211,7 @@ start-route ruta="mi_ruta":
 ## ───────────────────────────────────────────────────────────────
 start-ntp ruta="mi_ruta":
     # 1) Levanta solo compose.yaml (sin override ⇒ no teleop)
-    @SLAM=False CONTROLLER=mppi docker compose -f compose.yaml up -d
+    @SLAM=False docker compose -f compose.yaml up -d
 
     # 2) Espera a Nav2 'healthy'
     @echo "⌛  Esperando a Nav2..."
