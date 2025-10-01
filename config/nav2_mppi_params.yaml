@@ -72,7 +72,7 @@ bt_navigator:
     use_sim_time: false
     global_frame: map
     robot_base_frame: base_link
-    odom_topic: odometry/filtered
+    # odom_topic: odom
     bt_loop_duration: 10
     default_server_timeout: 20
     wait_for_service_timeout: 1000
@@ -166,19 +166,10 @@ controller_server:
       TrajectoryVisualizer:
         trajectory_step: 5
         time_step: 5
-      AckermannConstrains:
+      AckermannConstraints:
         min_turning_r: 0.05
-      critics: [ConstraintCritic, CostCritic, ObstaclesCritic, GoalCritic, GoalAngleCritic, PathAlignCritic, PathFollowCritic,
+      critics: [ConstraintCritic, ObstaclesCritic, GoalCritic, GoalAngleCritic, PathAlignCritic, PathFollowCritic,
         PathAngleCritic, PreferForwardCritic]
-      CostCritic:
-        enabled: true
-        cost_power: 1
-        cost_weight: 4.5
-        critical_cost: 300.0
-        consider_footprint: true
-        collision_cost: 1000000.0
-        near_goal_distance: 0.8
-        trajectory_point_step: 2
       ConstraintCritic:
         enabled: true
         cost_power: 1
@@ -201,9 +192,8 @@ controller_server:
       ObstaclesCritic:
         enabled: true
         cost_power: 1
-        cost_weight: 3.0
-        repulsion_weight: 1.2
-        critical_weight: 25.0
+        repulsion_weight: 1.5
+        critical_weight: 20.0
         consider_footprint: true
         collision_cost: 1000000.0
         collision_margin_distance: 0.12
