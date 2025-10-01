@@ -14,6 +14,14 @@ ENV NAV2_OVERLAY_SETUP=${NAV2_OVERLAY_WS}/install/setup.bash
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
+# Refresh the ROS 2 apt repository key to avoid signature expiration errors
+# when installing additional packages in derived layers.
+RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+    | gpg --dearmor -o /usr/share/keyrings/ros-archive-keyring.gpg \
+    && printf "deb [arch=%s signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu %s main\n" \
+        "$(dpkg --print-architecture)" "$(. /etc/os-release && echo "$UBUNTU_CODENAME")" \
+        > /etc/apt/sources.list.d/ros2.list
+
 # Install build essentials for pulling Navigation2 from source.
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
