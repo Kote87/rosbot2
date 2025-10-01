@@ -1,90 +1,133 @@
 #!/usr/bin/env python3
-"""
-Reproduce un recorrido YAML mediante la acción /follow_waypoints.
-Uso:
-  ros2 run path_tools path_player.py --file /routes/nombre.yaml
-"""
-import sys, time, yaml, math, rclpy
+import sys, math, yaml, argparse, rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
-from geometry_msgs.msg import PoseStamped, Quaternion
-from nav2_msgs.action import FollowWaypoints
+from geometry_msgs.msg import PoseStamped, Quaternion, PoseWithCovarianceStamped
+from nav2_msgs.action import FollowWaypoints, NavigateToPose
 from builtin_interfaces.msg import Time as TimeMsg
 
 
 def quaternion_from_yaw(yaw):
-    """Devuelve (x,y,z,w) para yaw dado (roll=pitch=0)."""
     half = yaw * 0.5
     return (0.0, 0.0, math.sin(half), math.cos(half))
 
 
+def make_pose(frame_id, x, y, yaw):
+    ps = PoseStamped()
+    ps.header.frame_id = frame_id
+    ps.header.stamp = TimeMsg(sec=0, nanosec=0)
+    ps.pose.position.x = float(x)
+    ps.pose.position.y = float(y)
+    q = quaternion_from_yaw(float(yaw))
+    ps.pose.orientation = Quaternion(x=q[0], y=q[1], z=q[2], w=q[3])
+    return ps
+
+
 class Player(Node):
-    def __init__(self, yaml_file: str):
+    def __init__(self, args):
         super().__init__("path_player")
+        self.args = args
         self.declare_parameter("global_frame", "map")
         self.global_frame = self.get_parameter("global_frame").value
+
         # Cargar YAML
-        self.waypoints = self._load_yaml(yaml_file)
-        self.client = ActionClient(self, FollowWaypoints, "/follow_waypoints")
-        self.get_logger().info(f"Leyendo {yaml_file} – {len(self.waypoints)} puntos")
-        self._send_goal()
+        with open(args.file, "r") as f:
+            data = yaml.safe_load(f)
+        self.waypoints = [
+            make_pose(self.global_frame, w["x"], w["y"], w["yaw"])
+            for w in data["waypoints"]
+        ]
+        self.get_logger().info(f"Leyendo {args.file} – {len(self.waypoints)} puntos")
 
-    # --- YAML → lista PoseStamped ----------------------------------
-    def _load_yaml(self, f):
-        data = yaml.safe_load(open(f))
-        poses = []
-        for i, w in enumerate(data["waypoints"]):
-            ps = PoseStamped()
-            ps.header.frame_id = self.global_frame
-            ps.header.stamp = TimeMsg(sec=0, nanosec=0)
-            ps.pose.position.x = float(w["x"])
-            ps.pose.position.y = float(w["y"])
-            q = quaternion_from_yaw(float(w["yaw"]))
-            ps.pose.orientation = Quaternion(x=q[0], y=q[1], z=q[2], w=q[3])
-            poses.append(ps)
-        return poses
+        # Clientes de acción
+        self.nav_client = ActionClient(self, NavigateToPose, "/navigate_to_pose")
+        self.wps_client = ActionClient(self, FollowWaypoints, "/follow_waypoints")
 
-    # --- Acción FollowWaypoints ------------------------------------
-    def _send_goal(self):
-        self.client.wait_for_server()
-        # Sella timestampts para evitar "mensajes viejos" en filtros/TF
+        # Publisher de initialpose opcional
+        self.init_pub = self.create_publisher(PoseWithCovarianceStamped, "/initialpose", 1)
+
+        self._run()
+
+    def _publish_initialpose(self, pose: PoseStamped):
+        m = PoseWithCovarianceStamped()
+        m.header.frame_id = pose.header.frame_id
+        m.header.stamp = self.get_clock().now().to_msg()
+        m.pose.pose = pose.pose
+        # varianzas moderadas
+        m.pose.covariance[0] = 0.25  # x
+        m.pose.covariance[7] = 0.25  # y
+        m.pose.covariance[35] = 0.12 # yaw
+        self.init_pub.publish(m)
+        self.get_logger().info("📍 Publicado initialpose (hint)")
+
+    def _go_to(self, pose: PoseStamped) -> bool:
+        self.nav_client.wait_for_server()
+        g = NavigateToPose.Goal()
+        g.pose = pose
+        self.get_logger().info("🚀 NavigateToPose → y:{:.2f} x:{:.2f}".format(pose.pose.position.y, pose.pose.position.x))
+        send_future = self.nav_client.send_goal_async(g)
+        rclpy.spin_until_future_complete(self, send_future)
+        handle = send_future.result()
+        if not handle or not handle.accepted:
+            self.get_logger().error("⛔ NavigateToPose rechazado")
+            return False
+        res_future = handle.get_result_async()
+        rclpy.spin_until_future_complete(self, res_future)
+        result = res_future.result()
+        self.get_logger().info("✅ NavigateToPose terminado con status {}".format(result.status))
+        return True
+
+    def _run(self):
+        # Opcional: initialpose
+        if self.args.set_initialpose != "none":
+            if self.args.set_initialpose == "first":
+                self._publish_initialpose(self.waypoints[0])
+            elif self.args.set_initialpose == "zero":
+                self._publish_initialpose(make_pose(self.global_frame, 0.0, 0.0, 0.0))
+
+        # Opcional: ir al inicio
+        if self.args.go_to_start != "none":
+            if self.args.go_to_start == "first":
+                self._go_to(self.waypoints[0])
+            elif self.args.go_to_start == "zero":
+                self._go_to(make_pose(self.global_frame, 0.0, 0.0, 0.0))
+
+        # Sella timestamps y lanza FollowWaypoints
+        self.wps_client.wait_for_server()
         now = self.get_clock().now().to_msg()
         for ps in self.waypoints:
             ps.header.stamp = now
-        goal_msg = FollowWaypoints.Goal(poses=self.waypoints)
-        self.get_logger().info("🚀  Enviando acción /follow_waypoints …")
-        send_future = self.client.send_goal_async(goal_msg, feedback_callback=self._feedback)
+        goal = FollowWaypoints.Goal(poses=self.waypoints)
+        self.get_logger().info("🏁 Enviando /follow_waypoints …")
+        send_future = self.wps_client.send_goal_async(goal, feedback_callback=self._feedback)
         send_future.add_done_callback(self._result_cb)
 
-    def _feedback(self, feedback):
-        idx = feedback.feedback.current_waypoint
-        self.get_logger().debug(f"➡️  Llegando a waypoint {idx}")
+    def _feedback(self, fb):
+        idx = fb.feedback.current_waypoint
+        self.get_logger().info(f"➡️  Waypoint {idx}")
 
     def _result_cb(self, future):
-        goal_handle = future.result()
-        if not goal_handle.accepted:
-            self.get_logger().error("⛔  Acción rechazada")
-            rclpy.shutdown()
-            return
-        self.get_logger().info("✅  Acción aceptada")
-        res_future = goal_handle.get_result_async()
-        res_future.add_done_callback(
-            lambda *_: (self.get_logger().info("🏁  Recorrido terminado"), rclpy.shutdown())
-        )
+        handle = future.result()
+        if not handle or not handle.accepted:
+            self.get_logger().error("⛔  FollowWaypoints rechazado")
+            rclpy.shutdown(); return
+        self.get_logger().info("✅  FollowWaypoints aceptado")
+        res_future = handle.get_result_async()
+        res_future.add_done_callback(lambda *_: (self.get_logger().info("🏁 Terminado"), rclpy.shutdown()))
 
 
 def main():
-    if "--file" not in sys.argv:
-        print("Requiere --file /ruta/archivo.yaml", file=sys.stderr)
-        sys.exit(1)
-    yaml_file = sys.argv[sys.argv.index("--file") + 1]
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--file", required=True)
+    ap.add_argument("--go-to-start", choices=["first", "zero", "none"], default="first",
+                    help="Navega al inicio antes de seguir la ruta (first=primer waypoint, zero=(0,0,0), none=directo a waypoints)")
+    ap.add_argument("--set-initialpose", choices=["first", "zero", "none"], default="none",
+                    help="Publica initialpose antes de navegar")
+    args = ap.parse_args()
+
     rclpy.init()
-    node = Player(yaml_file)
-    try:
-        rclpy.spin(node)
-    finally:
-        node.destroy_node()
-        rclpy.shutdown()
+    Player(args)
+    rclpy.spin(rclpy.get_default_context())
 
 
 if __name__ == "__main__":
