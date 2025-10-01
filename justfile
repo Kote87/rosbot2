@@ -219,16 +219,21 @@ start-ntp ruta="mi_ruta":
         docker compose ps navigation | grep -q "(healthy)" && exit 0; \
         sleep 2; done; echo "⛔  navigation no healthy"; exit 1'
 
-    # 2a) Espera a que /navigate_through_poses esté disponible
+    # 2a) Auto-localización (global localization + spin hasta converger)
+    @echo "🧭  Auto-localización (AMCL global)…"
+    @docker compose exec navigation bash -lc 'source /opt/ros/humble/setup.bash; \
+      python3 /ros2_ws/scripts/auto_localize.py' || true
+
+    # 2b) Espera a que /navigate_through_poses esté disponible
     @docker compose exec navigation bash -lc 'source /opt/ros/humble/setup.bash; \
       for i in $(seq 1 30); do \
         ros2 action list | grep -q "/navigate_through_poses" && exit 0; \
         sleep 1; done; echo "⛔  /navigate_through_poses no disponible"; exit 1'
 
-    # 2b) Limpieza de costmaps (evita aviso de AMENT_TRACE_SETUP_FILES)
+    # 2c) Limpieza de costmaps (evita aviso de AMENT_TRACE_SETUP_FILES)
     @docker compose exec navigation bash -lc 'export AMENT_TRACE_SETUP_FILES=""; /ros2_ws/scripts/clear_costmaps.sh' || true
 
-    # 2c) Verifica que los costmaps están suscritos a /scan_filtered
+    # 2d) Verifica que los costmaps están suscritos a /scan_filtered
     @docker compose exec navigation bash -lc 'python3 /ros2_ws/scripts/nav2_guard.py'
 
     # 3) Lanza NTP dentro de path_tools
