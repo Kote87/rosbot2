@@ -11,6 +11,9 @@ alias flash := flash-firmware
 [private]
 alias rosbot := start-rosbot
 [private]
+alias start := start-rosbot
+
+[private]
 gazebo: (start-simulation "gazebo")
 
 [private]
@@ -83,37 +86,6 @@ start-simulation engine="gazebo": _run-as-user
     docker compose -f compose.simulation.yaml down
     docker compose -f compose.simulation.yaml pull
     docker compose -f compose.simulation.yaml up
-
-start mode="" route="":
-    #!/bin/bash
-    just_cmd=(just)
-    if [[ -n "${JUSTFILE}" ]]; then
-      just_cmd+=(--justfile "${JUSTFILE}")
-    fi
-    case "${mode}" in
-      ""|"rosbot")
-        exec "${just_cmd[@]}" start-rosbot
-        ;;
-      "route")
-        if [[ -z "${route}" ]]; then
-          echo "Uso: just start route <nombre_ruta>" >&2
-          exit 1
-        fi
-        exec "${just_cmd[@]}" start-route "${route}"
-        ;;
-      "ntp")
-        if [[ -z "${route}" ]]; then
-          echo "Uso: just start ntp <nombre_ruta>" >&2
-          exit 1
-        fi
-        exec "${just_cmd[@]}" start-ntp "${route}"
-        ;;
-      *)
-        echo "Modo desconocido: ${mode}" >&2
-        echo "Usa: just start [rosbot|route|ntp] <nombre_ruta>" >&2
-        exit 1
-        ;;
-    esac
 
 # Restart the Nav2 container
 restart-navigation: _run-as-user

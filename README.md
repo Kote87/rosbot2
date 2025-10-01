@@ -135,22 +135,6 @@ http://rosbotxl:8080/ui
 > [!NOTE]
 > `rosbotxl` is the name of device set in Husarnet.
 
-## 🔗 Navigation2 upstream integration
-
-The `navigation` and `path_tools` containers now rebuild the
-[Navigation2](https://github.com/ros-navigation/navigation2/tree/humble)
-stack from source so that the MPPI controller and related plugins always
-match the upstream Humble branch.  Docker Compose takes care of cloning
-the repository and compiling the overlay workspace during
-`docker compose build navigation` (or automatically on the first
-`docker compose up`).  Set the `NAV2_BRANCH` build argument if you need a
-different branch or fork.
-
-- To replay a Navigate Through Poses route with the upstream stack, run
-  `just start ntp <nombre_ruta>`.
-- Traditional waypoint playback remains available via
-  `just start route <nombre_ruta>`.
-
 ---
 
 ## Simulation
