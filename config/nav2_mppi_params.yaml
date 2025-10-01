@@ -10,8 +10,8 @@ amcl:
 
     robot_model_type: nav2_amcl::DifferentialMotionModel
 
-    set_initial_pose: false
-    always_reset_initial_pose: false
+    set_initial_pose: true
+    always_reset_initial_pose: true
 
     tf_broadcast: true
     transform_tolerance: 0.30
@@ -56,6 +56,11 @@ amcl:
     z_max: 0.05
     z_rand: 0.5
     z_short: 0.05
+
+    initial_pose:
+      x: 0.0
+      y: 0.0
+      yaw: 0.0
 
     # Si quieres fijarla manualmente, publícala en /initialpose desde UI o script
 
@@ -192,13 +197,14 @@ controller_server:
       ObstaclesCritic:
         enabled: true
         cost_power: 1
+        cost_weight: 3.0
         repulsion_weight: 1.5
         critical_weight: 20.0
         consider_footprint: true
         collision_cost: 1000000.0
         collision_margin_distance: 0.12
         near_goal_distance: 0.5
-        inflation_radius: 0.35
+        inflation_radius: 0.22
         cost_scaling_factor: 3.0
       PathAlignCritic:
         enabled: true
@@ -243,12 +249,7 @@ local_costmap:
       width: 4
       height: 4
       resolution: 0.04
-      plugins: [static_layer, obstacle_layer, inflation_layer]
-      static_layer:
-        plugin: nav2_costmap_2d::StaticLayer
-        enabled: true
-        map_subscribe_transient_local: true
-        subscribe_to_updates: true
+      plugins: [obstacle_layer, inflation_layer]
       obstacle_layer:
         plugin: nav2_costmap_2d::ObstacleLayer
         enabled: true
@@ -259,18 +260,17 @@ local_costmap:
           data_type: LaserScan
           marking: true
           clearing: true
-          inf_is_valid: false
+          inf_is_valid: true
           obstacle_range: 6.5
           raytrace_range: 8.0
           observation_persistence: 0.40
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
         enabled: true
-        inflation_radius: 0.35
+        inflation_radius: 0.22
         cost_scaling_factor: 3.0
-      footprint: '[[0.165, 0.145], [0.165, -0.145], [-0.165, -0.145], [-0.165, 0.145]]'
-      robot_radius: 0.0
-      footprint_padding: 0.04
+      robot_radius: 0.18
+      footprint_padding: 0.05
 
       always_send_full_costmap: true
 
