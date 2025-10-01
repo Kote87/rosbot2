@@ -12,6 +12,14 @@ x-cpu-config:
     - DISPLAY=${DISPLAY:?err}
     - LIBGL_ALWAYS_SOFTWARE=1
 
+x-nav2-image: &nav2-image
+  build:
+    context: .
+    dockerfile: Dockerfile.navigation
+    args:
+      NAV2_BRANCH: humble
+  image: rosbot-navigation2:humble-source
+
 services:
 
   rosbot:
@@ -22,18 +30,21 @@ services:
     command: ${SIMULATION_COMMAND:-ros2 launch rosbot_xl_gazebo simulation.launch.py mecanum:=${MECANUM:-True}}
 
   navigation:
-    image: husarion/navigation2:humble-1.1.12-20240123
+    <<: *nav2-image
     volumes:
       - ./config/nav2_${CONTROLLER:-rpp}_params.yaml:/params.yaml
       - ./maps:/maps
     environment:
       - SAVE_MAP_PERIOD=${SAVE_MAP_PERIOD}
     command: >
-      ros2 launch nav2_bringup bringup_launch.py
-        slam:=${SLAM:-True}
-        params_file:=/params.yaml
-        map:=/maps/map.yaml
-        use_sim_time:=True
+      bash -lc "source /opt/ros/humble/setup.bash &&
+        source /ros2_ws/install/setup.bash &&
+        source ${NAV2_OVERLAY_SETUP:-/navigation2_ws/install/setup.bash} &&
+        ros2 launch nav2_bringup bringup_launch.py \
+          slam:=${SLAM:-True} \
+          params_file:=/params.yaml \
+          map:=/maps/map.yaml \
+          use_sim_time:=True"
 
   foxglove:
     image: husarion/foxglove:1.84.0

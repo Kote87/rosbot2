@@ -1,0 +1,54 @@
+# syntax=docker/dockerfile:1.4
+#
+# Navigation stack image that overlays the upstream Navigation2 repository
+# (https://github.com/ros-navigation/navigation2) on top of the Husarion
+# base image.  The overlay workspace is built from the Humble branch so that
+# MPPI controller updates are always in sync with upstream.
+ARG BASE_IMAGE=husarion/navigation2:humble-1.1.12-20240123
+FROM ${BASE_IMAGE} AS navigation2
+
+ARG NAV2_BRANCH=humble
+ARG NAV2_REMOTE=https://github.com/ros-navigation/navigation2.git
+ENV NAV2_OVERLAY_WS=/navigation2_ws
+ENV NAV2_OVERLAY_SETUP=${NAV2_OVERLAY_WS}/install/setup.bash
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Install build essentials for pulling Navigation2 from source.
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create overlay workspace and fetch upstream Navigation2.
+RUN mkdir -p ${NAV2_OVERLAY_WS}/src
+WORKDIR ${NAV2_OVERLAY_WS}/src
+RUN git clone --branch ${NAV2_BRANCH} --depth 1 ${NAV2_REMOTE} navigation2
+
+# Build only the Navigation2 packages we need on top of the Husarion base
+# workspace.
+WORKDIR ${NAV2_OVERLAY_WS}
+RUN source /opt/ros/humble/setup.bash \
+    && colcon build --symlink-install \
+        --event-handlers console_cohesion+ console_direct+ \
+        --packages-up-to nav2_mppi_controller nav2_bt_navigator \
+            nav2_controller nav2_planner nav2_smoother \
+    && rm -rf log
+
+# Ensure interactive shells and the default ROS entrypoint source the overlay.
+RUN echo "source ${NAV2_OVERLAY_SETUP}" >> /etc/skel/.bashrc \
+    && echo "source ${NAV2_OVERLAY_SETUP}" >> /root/.bashrc
+
+RUN if [ -d /ros_entrypoint.d ]; then \
+      printf '#!/bin/bash\nsource %s\n' "${NAV2_OVERLAY_SETUP}" \
+        > /ros_entrypoint.d/50-navigation2-overlay.sh \
+        && chmod +x /ros_entrypoint.d/50-navigation2-overlay.sh; \
+    else \
+      echo "source ${NAV2_OVERLAY_SETUP}" >> /ros_entrypoint.sh; \
+    fi
+
+# Provide the checked-out commit hash for debugging purposes.
+RUN git -C ${NAV2_OVERLAY_WS}/src/navigation2 rev-parse HEAD \
+    > ${NAV2_OVERLAY_WS}/NAV2_COMMIT
+
+WORKDIR /
