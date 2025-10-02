@@ -1,9 +1,29 @@
+# config/laser_filters.yaml
 scan_to_scan_filter_chain:
   ros__parameters:
-    filter_chain:
-      - name: range
-        type: laser_filters/LaserScanRangeFilter
+    output_queue_size: 1
+    scan_filter_chain:
+      - name: remove_robot_body
+        type: laser_filters/LaserScanBoxFilter
         params:
-          use_message_range_limits: false
-          lower_threshold: 0.05
-          upper_threshold: 12.0
+          box_frame: base_link
+          min_x: -0.23
+          max_x:  0.23
+          min_y: -0.20
+          max_y:  0.20
+          min_z: -1.0
+          max_z:  1.0
+          invert: false
+
+      - name: shadows
+        type: laser_filters/ScanShadowsFilter
+        params:
+          min_angle: 0.0
+          max_angle: 170.0
+          neighbors: 20
+          window: 1
+
+      - name: median
+        type: laser_filters/LaserScanMedianFilter
+        params:
+          window: 5
