@@ -173,21 +173,48 @@ controller_server:
         time_step: 5
       AckermannConstraints:
         min_turning_r: 0.05
-      critics: ["ObstaclesCritic", "ConstraintCritic",
-        "PathAlignCritic", "PathFollowCritic",
-        "GoalCritic", "PreferForwardCritic", "TwirlingCritic"]
+      # (mantén tus dt, vx_max, etc.)
+      critics: [ObstaclesCritic, ConstraintCritic, PathAlignCritic,
+                PathFollowCritic, GoalCritic, PreferForwardCritic, TwirlingCritic]
 
       ObstaclesCritic:
-        weight: 5.0
+        enabled: true
+        cost_power: 1
+        # estos SÍ los lee tu binario
+        repulsion_weight: 2.5
+        critical_weight: 30.0
         consider_footprint: true
-        collision_margin_distance: 0.10
+        collision_margin_distance: 0.12
 
-      PathAlignCritic:   {weight: 10.0}
-      PathFollowCritic:  {weight: 6.0}
-      GoalCritic:        {weight: 3.0}
-      PreferForwardCritic: {weight: 5.0}
-      ConstraintCritic:  {weight: 1.0}
-      TwirlingCritic:    {weight: 2.0}
+      PathAlignCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 10.0
+
+      PathFollowCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 6.0
+
+      GoalCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 3.0
+
+      PreferForwardCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 5.0
+
+      ConstraintCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 1.0
+
+      TwirlingCritic:
+        # nombres antiguos:
+        twirling_cost_power: 1
+        twirling_cost_weight: 2.0
 
 controller_server_rclcpp_node:
   ros__parameters:
