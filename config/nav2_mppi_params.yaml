@@ -1,4 +1,5 @@
 ---
+# MPPI: sintonía para reaccionar a obstáculos (API antigua de críticos)
 amcl:
   ros__parameters:
     use_sim_time: false
@@ -152,44 +153,44 @@ controller_server:
       time_steps: 56
       model_dt: 0.05
       batch_size: 800
-      vx_std: 0.2
+      vx_std: 0.30             # más exploración longitudinal
       vy_std: 0.0
-      wz_std: 0.35
+      wz_std: 0.80             # más exploración angular
       vx_max: 0.3
-      vx_min: -0.2
+      vx_min: -0.4             # permitir marcha atrás útil
       vy_max: 0.0
-      wz_max: 0.7
+      wz_max: 1.2              # permitir giros más rápidos
       iteration_count: 1
       prune_distance: 1.8
       transform_tolerance: 0.25
       temperature: 0.3
       gamma: 0.015
       motion_model: DiffDrive
-      visualize: false
+      visualize: true          # ver /trajectories en Foxglove
       reset_period: 1.0 # (only in Humble)
-      regenerate_noises: false
+      regenerate_noises: true  # evita estancamiento del muestreo
       TrajectoryVisualizer:
         trajectory_step: 5
         time_step: 5
       AckermannConstraints:
         min_turning_r: 0.05
       # (mantén tus dt, vx_max, etc.)
-      critics: [ObstaclesCritic, ConstraintCritic, PathAlignCritic,
-                PathFollowCritic, GoalCritic, PreferForwardCritic, TwirlingCritic]
+      critics: ["ObstaclesCritic","ConstraintCritic","PathAlignCritic",
+                "PathFollowCritic","GoalCritic","PreferForwardCritic","TwirlingCritic"]
 
       ObstaclesCritic:
         enabled: true
         cost_power: 1
-        # estos SÍ los lee tu binario
-        repulsion_weight: 2.5
-        critical_weight: 30.0
+        # estos parámetros SÍ los está leyendo tu binario (se ven en logs)
+        repulsion_weight: 6.0
+        critical_weight: 80.0
         consider_footprint: true
-        collision_margin_distance: 0.12
+        collision_margin_distance: 0.18
 
       PathAlignCritic:
         enabled: true
         cost_power: 1
-        cost_weight: 10.0
+        cost_weight: 2.0        # bajar fidelidad al camino
 
       PathFollowCritic:
         enabled: true
@@ -204,7 +205,7 @@ controller_server:
       PreferForwardCritic:
         enabled: true
         cost_power: 1
-        cost_weight: 5.0
+        cost_weight: 2.0        # permitir maniobras (menos sesgo adelante)
 
       ConstraintCritic:
         enabled: true
@@ -214,7 +215,7 @@ controller_server:
       TwirlingCritic:
         # nombres antiguos:
         twirling_cost_power: 1
-        twirling_cost_weight: 2.0
+        twirling_cost_weight: 0.2  # NO penalizar giro; antes eran 10.0
 
 controller_server_rclcpp_node:
   ros__parameters:
@@ -223,6 +224,10 @@ controller_server_rclcpp_node:
 local_costmap:
   local_costmap:
     ros__parameters:
+      # Unifica footprint con el global para colisiones "de verdad"
+      footprint: '[[0.165, 0.145], [0.165, -0.145], [-0.165, -0.145], [-0.165, 0.145]]'
+      robot_radius: 0.0
+      footprint_padding: 0.04
       update_frequency: 10.0
       publish_frequency: 5.0
       global_frame: odom
@@ -253,8 +258,6 @@ local_costmap:
         enabled: true
         inflation_radius: 0.22
         cost_scaling_factor: 3.0
-      robot_radius: 0.18
-      footprint_padding: 0.05
 
       always_send_full_costmap: true
 
