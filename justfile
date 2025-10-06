@@ -329,3 +329,60 @@ bridge-odom-tf:
       source /opt/ros/humble/setup.bash
       timeout 8 ros2 run tf2_ros tf2_echo odom base_link || true
     '
+
+# --- Bridge ODOM→TF con QoS explícitos --------------------------
+bridge-odom-tf-qos:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    docker compose exec -T rosbot bash -lc '
+      source /opt/ros/humble/setup.bash
+      cat > /tmp/odom_tf_bridge_qos.py << "PY"
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy, QoSDurabilityPolicy
+from nav_msgs.msg import Odometry
+from tf2_ros import TransformBroadcaster
+from geometry_msgs.msg import TransformStamped
+
+qos_best = QoSProfile(depth=10)
+qos_best.reliability = QoSReliabilityPolicy.BEST_EFFORT
+qos_best.history = QoSHistoryPolicy.KEEP_LAST
+qos_best.durability = QoSDurabilityPolicy.VOLATILE
+
+qos_rel = QoSProfile(depth=10)  # RELIABLE por defecto
+
+class OdomTFBridge(Node):
+    def __init__(self):
+        super().__init__("odom_tf_bridge_qos")
+        self.br = TransformBroadcaster(self)
+        self.pub = self.create_publisher(Odometry, "/odom", 10)
+        self.create_subscription(Odometry, "/rosbot_xl_base_controller/odom", self.cb, qos_best)
+        self.create_subscription(Odometry, "/odometry/filtered",              self.cb, qos_rel)
+        self.get_logger().info("Bridge activo: BEST_EFFORT + RELIABLE")
+
+    def cb(self, msg: Odometry):
+        msg.header.frame_id = "odom"
+        if not msg.child_frame_id:
+            msg.child_frame_id = "base_link"
+        self.pub.publish(msg)
+        t = TransformStamped()
+        t.header.stamp = self.get_clock().now().to_msg()
+        t.header.frame_id = "odom"
+        t.child_frame_id  = msg.child_frame_id
+        t.transform.translation.x = msg.pose.pose.position.x
+        t.transform.translation.y = msg.pose.pose.position.y
+        t.transform.translation.z = msg.pose.pose.position.z
+        t.transform.rotation      = msg.pose.pose.orientation
+        self.br.sendTransform(t)
+
+rclpy.init()
+try:
+    rclpy.spin(OdomTFBridge())
+finally:
+    rclpy.shutdown()
+PY
+      nohup python3 -u /tmp/odom_tf_bridge_qos.py >/tmp/odom_tf_bridge.log 2>&1 &
+      sleep 1
+      echo "== Verificando TF odom->base_link (8s) =="; timeout 8 ros2 run tf2_ros tf2_echo odom base_link || true
+      echo "== Log del bridge =="; tail -n 50 /tmp/odom_tf_bridge.log || true
+    '
