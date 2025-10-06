@@ -243,10 +243,14 @@ ruta1:
 
 # --- Diagnóstico ODOM/TF sin y con Nav2 ------------------------
 diag-odom-tf:
-    @echo "▶ Drivers + Lidar + Filtro + micro-ROS"
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    echo "▶ Drivers + Lidar + Filtro + micro-ROS"
     docker compose up -d microros rosbot rplidar scan_filter
-    @echo ""
-    @echo "▶ Chequeos dentro de 'rosbot'"
+
+    echo
+    echo "▶ Chequeos dentro de 'rosbot'"
     docker compose exec rosbot bash -lc '
       source /opt/ros/humble/setup.bash
       echo "== nodos =="; ros2 node list || true
@@ -257,11 +261,13 @@ diag-odom-tf:
       echo "== hz /odometry/filtered (8s) ==";             timeout 8 ros2 topic hz /odometry/filtered || true
       echo "== TF odom->base_link (8s) ==";                 timeout 8 ros2 run tf2_ros tf2_echo odom base_link || true
     '
-    @echo ""
-    @echo "▶ Lanzando Nav2 (para map->odom)"
+
+    echo
+    echo "▶ Lanzando Nav2 (para map->odom)"
     docker compose up -d navigation
-    @echo ""
-    @echo "▶ Chequeos dentro de 'navigation'"
+
+    echo
+    echo "▶ Chequeos dentro de 'navigation'"
     docker compose exec navigation bash -lc '
       source /opt/ros/humble/setup.bash
       echo "== TF map->odom (8s) ==";       timeout 8 ros2 run tf2_ros tf2_echo map odom || true
@@ -270,10 +276,13 @@ diag-odom-tf:
 
 # --- Bridge temporal ODOM→TF (si el base no publica odom->base_link) ----
 bridge-odom-tf:
-    @docker compose exec -T rosbot bash -lc '
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    docker compose exec -T rosbot bash -lc '
       source /opt/ros/humble/setup.bash
-      echo "▶ Lanzando odom_tf_bridge en background"
-      python3 - << "PY" >/dev/null 2>&1 &
+
+      cat >/tmp/odom_tf_bridge.py << "PY"
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
@@ -311,6 +320,9 @@ try:
 finally:
     rclpy.shutdown()
 PY
+
+      nohup python3 /tmp/odom_tf_bridge.py >/tmp/odom_tf_bridge.log 2>&1 &
+
       sleep 1
-      timeout 8 ros2 run tf2_ros tf2_echo odom base_link || true
+      echo "== TF odom->base_link (8s) =="; timeout 8 ros2 run tf2_ros tf2_echo odom base_link || true
     '
