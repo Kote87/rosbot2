@@ -254,7 +254,7 @@ diag-odom-tf:
     docker compose exec rosbot bash -lc '
       source /opt/ros/humble/setup.bash
       echo "== nodos =="; ros2 node list || true
-      echo "== Odometry topics =="; ros2 topic list | grep -E "/odom$|/odometry/filtered$" || true
+      echo "== Odometry topics =="; ros2 topic list | grep -E "/rosbot_xl_base_controller/odom$|^/odometry/filtered$" || true
       echo "== info /rosbot_xl_base_controller/odom =="; ros2 topic info -v /rosbot_xl_base_controller/odom || true
       echo "== info /odometry/filtered ==";             ros2 topic info -v /odometry/filtered || true
       echo "== hz /rosbot_xl_base_controller/odom (8s) =="; timeout 8 ros2 topic hz /rosbot_xl_base_controller/odom || true
@@ -279,50 +279,53 @@ bridge-odom-tf:
     #!/usr/bin/env bash
     set -euo pipefail
 
+    echo "▶ Creando /tmp/odom_tf_bridge.py dentro de 'rosbot' (sin heredoc en just)"
+    docker compose exec -T rosbot bash -lc '
+      set -e
+      tmp=/tmp/odom_tf_bridge.py
+      : > "$tmp"
+      printf "%s\n" "import rclpy" >> "$tmp"
+      printf "%s\n" "from rclpy.node import Node" >> "$tmp"
+      printf "%s\n" "from nav_msgs.msg import Odometry" >> "$tmp"
+      printf "%s\n" "from tf2_ros import TransformBroadcaster" >> "$tmp"
+      printf "%s\n" "from geometry_msgs.msg import TransformStamped" >> "$tmp"
+      printf "%s\n" "" >> "$tmp"
+      printf "%s\n" "SRC_TOPICS = [\x22/rosbot_xl_base_controller/odom\x22, \x22/odometry/filtered\x22]" >> "$tmp"
+      printf "%s\n" "" >> "$tmp"
+      printf "%s\n" "class OdomTFBridge(Node):" >> "$tmp"
+      printf "%s\n" "    def __init__(self):" >> "$tmp"
+      printf "%s\n" "        super().__init__(\x22odom_tf_bridge\x22)" >> "$tmp"
+      printf "%s\n" "        self.br = TransformBroadcaster(self)" >> "$tmp"
+      printf "%s\n" "        self.pub = self.create_publisher(Odometry, \x22/odom\x22, 10)" >> "$tmp"
+      printf "%s\n" "        self.subs = [self.create_subscription(Odometry, t, self.cb, 10) for t in SRC_TOPICS]" >> "$tmp"
+      printf "%s\n" "        self.get_logger().info(f\x22Esperando odometría en: {SRC_TOPICS}\x22)" >> "$tmp"
+      printf "%s\n" "" >> "$tmp"
+      printf "%s\n" "    def cb(self, msg: Odometry):" >> "$tmp"
+      printf "%s\n" "        msg.header.frame_id = \x22odom\x22" >> "$tmp"
+      printf "%s\n" "        if not msg.child_frame_id:" >> "$tmp"
+      printf "%s\n" "            msg.child_frame_id = \x22base_link\x22" >> "$tmp"
+      printf "%s\n" "        self.pub.publish(msg)" >> "$tmp"
+      printf "%s\n" "        t = TransformStamped()" >> "$tmp"
+      printf "%s\n" "        t.header.stamp = self.get_clock().now().to_msg()" >> "$tmp"
+      printf "%s\n" "        t.header.frame_id = \x22odom\x22" >> "$tmp"
+      printf "%s\n" "        t.child_frame_id  = msg.child_frame_id" >> "$tmp"
+      printf "%s\n" "        t.transform.translation.x = msg.pose.pose.position.x" >> "$tmp"
+      printf "%s\n" "        t.transform.translation.y = msg.pose.pose.position.y" >> "$tmp"
+      printf "%s\n" "        t.transform.translation.z = msg.pose.pose.position.z" >> "$tmp"
+      printf "%s\n" "        t.transform.rotation      = msg.pose.pose.orientation" >> "$tmp"
+      printf "%s\n" "        self.br.sendTransform(t)" >> "$tmp"
+      printf "%s\n" "" >> "$tmp"
+      printf "%s\n" "rclpy.init()" >> "$tmp"
+      printf "%s\n" "try:" >> "$tmp"
+      printf "%s\n" "    rclpy.spin(OdomTFBridge())" >> "$tmp"
+      printf "%s\n" "finally:" >> "$tmp"
+      printf "%s\n" "    rclpy.shutdown()" >> "$tmp"
+      nohup python3 "$tmp" >/tmp/odom_tf_bridge.log 2>&1 &
+    '
+
+    echo
+    echo "▶ Verificando TF odom->base_link"
     docker compose exec -T rosbot bash -lc '
       source /opt/ros/humble/setup.bash
-
-      cat >/tmp/odom_tf_bridge.py << "PY"
-import rclpy
-from rclpy.node import Node
-from nav_msgs.msg import Odometry
-from tf2_ros import TransformBroadcaster
-from geometry_msgs.msg import TransformStamped
-
-SRC_TOPICS = ["/rosbot_xl_base_controller/odom", "/odometry/filtered"]
-
-class OdomTFBridge(Node):
-    def __init__(self):
-        super().__init__("odom_tf_bridge")
-        self.br = TransformBroadcaster(self)
-        self.pub = self.create_publisher(Odometry, "/odom", 10)
-        self.subs = [self.create_subscription(Odometry, t, self.cb, 10) for t in SRC_TOPICS]
-        self.get_logger().info(f"Esperando odometría en: {SRC_TOPICS}")
-
-    def cb(self, msg: Odometry):
-        msg.header.frame_id = "odom"
-        if not msg.child_frame_id:
-            msg.child_frame_id = "base_link"
-        self.pub.publish(msg)
-        t = TransformStamped()
-        t.header.stamp = self.get_clock().now().to_msg()
-        t.header.frame_id = "odom"
-        t.child_frame_id  = msg.child_frame_id
-        t.transform.translation.x = msg.pose.pose.position.x
-        t.transform.translation.y = msg.pose.pose.position.y
-        t.transform.translation.z = msg.pose.pose.position.z
-        t.transform.rotation      = msg.pose.pose.orientation
-        self.br.sendTransform(t)
-
-rclpy.init()
-try:
-    rclpy.spin(OdomTFBridge())
-finally:
-    rclpy.shutdown()
-PY
-
-      nohup python3 /tmp/odom_tf_bridge.py >/tmp/odom_tf_bridge.log 2>&1 &
-
-      sleep 1
-      echo "== TF odom->base_link (8s) =="; timeout 8 ros2 run tf2_ros tf2_echo odom base_link || true
+      timeout 8 ros2 run tf2_ros tf2_echo odom base_link || true
     '
