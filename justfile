@@ -243,33 +243,37 @@ ruta1:
 
 # --- Diagnóstico ODOM/TF sin y con Nav2 ------------------------
 diag-odom-tf:
-    @echo "▶ Drivers + Lidar + Filtro"
-    docker compose up -d rosbot rplidar scan_filter
+    @echo "▶ Drivers + Lidar + Filtro + micro-ROS"
+    docker compose up -d microros rosbot rplidar scan_filter
     @echo ""
     @echo "▶ Chequeos dentro de 'rosbot'"
-    docker compose exec rosbot bash -lc '\
-      source /opt/ros/humble/setup.bash; \
-      echo "== Odometry topics =="; ros2 topic list | grep -E "/odom$|/odometry/filtered$" || true; \
-      echo "== info /rosbot_xl_base_controller/odom =="; ros2 topic info -v /rosbot_xl_base_controller/odom || true; \
-      echo "== info /odometry/filtered ==";             ros2 topic info -v /odometry/filtered || true; \
-      echo "== hz /rosbot_xl_base_controller/odom (8s) =="; timeout 8 ros2 topic hz /rosbot_xl_base_controller/odom || true; \
-      echo "== hz /odometry/filtered (8s) ==";             timeout 8 ros2 topic hz /odometry/filtered || true; \
-      echo "== TF odom->base_link (8s) ==";                 timeout 8 ros2 run tf2_ros tf2_echo odom base_link || true'
+    docker compose exec rosbot bash -lc '
+      source /opt/ros/humble/setup.bash
+      echo "== nodos =="; ros2 node list || true
+      echo "== Odometry topics =="; ros2 topic list | grep -E "/odom$|/odometry/filtered$" || true
+      echo "== info /rosbot_xl_base_controller/odom =="; ros2 topic info -v /rosbot_xl_base_controller/odom || true
+      echo "== info /odometry/filtered ==";             ros2 topic info -v /odometry/filtered || true
+      echo "== hz /rosbot_xl_base_controller/odom (8s) =="; timeout 8 ros2 topic hz /rosbot_xl_base_controller/odom || true
+      echo "== hz /odometry/filtered (8s) ==";             timeout 8 ros2 topic hz /odometry/filtered || true
+      echo "== TF odom->base_link (8s) ==";                 timeout 8 ros2 run tf2_ros tf2_echo odom base_link || true
+    '
     @echo ""
     @echo "▶ Lanzando Nav2 (para map->odom)"
     docker compose up -d navigation
     @echo ""
     @echo "▶ Chequeos dentro de 'navigation'"
-    docker compose exec navigation bash -lc '\
-      source /opt/ros/humble/setup.bash; \
-      echo "== TF map->odom (8s) ==";       timeout 8 ros2 run tf2_ros tf2_echo map odom || true; \
-      echo "== TF odom->base_link (8s) =="; timeout 8 ros2 run tf2_ros tf2_echo odom base_link || true'
+    docker compose exec navigation bash -lc '
+      source /opt/ros/humble/setup.bash
+      echo "== TF map->odom (8s) ==";       timeout 8 ros2 run tf2_ros tf2_echo map odom || true
+      echo "== TF odom->base_link (8s) =="; timeout 8 ros2 run tf2_ros tf2_echo odom base_link || true
+    '
 
-# --- Bridge temporal ODOM→TF -----------------------------------
+# --- Bridge temporal ODOM→TF (si el base no publica odom->base_link) ----
 bridge-odom-tf:
-    @docker compose exec -T rosbot bash -lc '\
-      source /opt/ros/humble/setup.bash; \
-      cat >/tmp/odom_tf_bridge.py << "PY" \
+    @docker compose exec -T rosbot bash -lc '
+      source /opt/ros/humble/setup.bash
+      echo "▶ Lanzando odom_tf_bridge en background"
+      python3 - << "PY" >/dev/null 2>&1 &
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
@@ -287,7 +291,6 @@ class OdomTFBridge(Node):
         self.get_logger().info(f"Esperando odometría en: {SRC_TOPICS}")
 
     def cb(self, msg: Odometry):
-        # Normaliza a odom/base_link
         msg.header.frame_id = "odom"
         if not msg.child_frame_id:
             msg.child_frame_id = "base_link"
@@ -308,8 +311,6 @@ try:
 finally:
     rclpy.shutdown()
 PY
-      nohup python3 /tmp/odom_tf_bridge.py >/tmp/odom_tf_bridge.log 2>&1 & \
-      && echo "▶ odom_tf_bridge lanzado (background)"; \
-      sleep 1; \
-      timeout 8 ros2 run tf2_ros tf2_echo odom base_link || true'
-
+      sleep 1
+      timeout 8 ros2 run tf2_ros tf2_echo odom base_link || true
+    '
