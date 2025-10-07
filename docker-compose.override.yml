@@ -50,7 +50,7 @@ services:
   # hasta que comprobemos que el EKF lo publica estable por sí mismo.
   tf_bridge:
     network_mode: host
-    image: ${ROS_IMAGE:-ros:humble-ros-base}
+    image: ${ROS_IMAGE:-ros:humble-ros-core}
     depends_on:
       - rosbot
     environment:
@@ -59,13 +59,10 @@ services:
     # Coloca el script en ./path_tools/tf_odom_bridge.py (te lo dejo abajo)
     volumes:
       - ./path_tools:/path_tools:ro
+    # No instales nada en caliente; la imagen ya trae tf2_ros en Python.
     command: >
-      bash -lc "set -e;
-                apt-get update;
-                apt-get install -y --no-install-recommends \
-                  ros-humble-tf2-ros ros-humble-nav-msgs python3-pip;
-                source /opt/ros/humble/setup.bash;
-                python3 /path_tools/tf_odom_bridge.py"
+      bash -lc "source /opt/ros/humble/setup.bash &&
+                python3 /path_tools/tf_odom_bridge.py 2>&1 | tee /tmp/tf_bridge.log"
 
   # Teleop por teclado (vuelve a estar disponible para `just teleop`)
   teleop:
