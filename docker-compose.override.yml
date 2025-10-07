@@ -1,99 +1,59 @@
-version: "3.8"
-
 services:
-  ###############################################################
-  # 1) rosbot: drivers con cámara OAK
-  ###############################################################
   rosbot:
-    image: husarion/rosbot-xl:humble-0.10.0-20240202
-    network_mode: host
-    privileged: true
-    restart: unless-stopped
-    environment: [ ROS_DOMAIN_ID=0 ]
-    volumes:
-      - ./maps:/maps
-      - ./config/oak_1080p.yaml:/config/oak_1080p.yaml:ro
-    command: >
-      ros2 launch rosbot_xl_bringup bringup.launch.py
-        mecanum:=${MECANUM:-True}
-        depthai_params_file:=/config/oak_1080p.yaml
+    environment:
+      - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 
-  ###############################################################
-  # 2) teleop_twist_keyboard (mover el robot)
-  ###############################################################
-  teleop:
-    image: husarion/rosbot-xl:humble-0.10.0-20240202
-    network_mode: host
-    privileged: true
-    stdin_open: true
-    tty: true
-    environment: [ ROS_DOMAIN_ID=0 ]
-    depends_on:
-      rosbot: { condition: service_started }   # tolera que rosbot no tenga healthcheck
-    command: >
-      bash -c "source /opt/ros/humble/setup.bash &&
-               ros2 run teleop_twist_keyboard teleop_twist_keyboard
-                 cmd_vel:=/cmd_vel"
+  rplidar:
+    environment:
+      - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 
-  ###############################################################
-  # 3) Navigation 2 (activo: genera /map)
-  ###############################################################
   navigation:
-    volumes:
-      - ./maps:/home/husarion/rosbotxl/maps
+    environment:
+      - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+    # Activa el static publisher map→odom SOLO cuando NO uses SLAM.
+    # Si vas a usar SLAM, deja este command comentado.
+    #command: >
+    #  bash -lc "source /opt/ros/humble/setup.bash &&
+    #            ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 map odom"
 
-  ###############################################################
-  # 4) explore_lite dormido (evita exploración autónoma)
-  ###############################################################
-  explore_lite:
-    command: [ "bash","-c","echo 'explore_lite disabled'; sleep infinity" ]
+  microros:
+    environment:
+      - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 
-  ###############################################################
-  # 5) Foxglove‑bridge con buffer / canales amplios
-  ###############################################################
+  foxglove:
+    environment:
+      - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+
   foxglove-ds:
-    image: husarion/foxglove-bridge:humble-0.7.3-20240108
-    restart: unless-stopped
-    command: >
-      ros2 launch foxglove_bridge foxglove_bridge_launch.xml
-        port:=8765
-        capabilities:=[clientPublish,connectionGraph,assets]
+    environment:
+      - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+
+  path_tools:
+    environment:
+      - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+
+  # Pequeño puente que GARANTIZA odom→base_link desde /odometry/filtered
+  # hasta que comprobemos que el EKF lo publica estable por sí mismo.
+  tf_bridge:
+    image: ${ROS_IMAGE:-ros:humble-ros-core}
     depends_on:
-      rplidar:
-        condition: service_started
-
-  ###############################################################
-  # 6) Foxglove Studio (UI) – sin cambios
-  ###############################################################
-  # foxglove  se queda tal y como está en tu compose.yaml
-
-###############################################################
-# 7) Static transform  (láser → óptica con rotación estándar)
-###############################################################
-  static_tf:
-    image: husarion/rosbot-xl:humble-0.10.0-20240202
-    network_mode: host
-    restart: unless-stopped
-    environment: [ ROS_DOMAIN_ID=0 ]
-    command: [ "ros2", "run", "tf2_ros", "static_transform_publisher",
-               "0", "0", "0",              # x y z
-               "-1.5708", "0", "1.5708",   # roll pitch yaw (láser→optical)
-               "laser", "oak_rgb_camera_optical_frame" ]
-
-###############################################################
-# 8) Overlay  (imagen OAK + puntos RPLIDAR)
-###############################################################
-  overlay:
-    image: husarion/rosbot-xl:humble-0.10.0-20240202
-    network_mode: host
-    restart: unless-stopped
-    environment: [ ROS_DOMAIN_ID=0 ]
+      - rosbot
+    networks: [default]
+    environment:
+      - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+    # Coloca el script en ./path_tools/tf_odom_bridge.py (te lo dejo abajo)
     volumes:
-      - ./scripts/lidar_overlay.py:/overlay.py:ro
-    command: [ "bash", "-c",
-               "apt-get update -qq && apt-get install -y python3-opencv && \
-                python3 /overlay.py" ]
-    depends_on:
-      static_tf:
-        condition: service_started
-
+      - ./path_tools:/path_tools:ro
+    command: >
+      bash -lc "apt-get update && apt-get install -y python3-pip &&
+                pip3 install rclpy tf-transformations > /dev/null 2>&1 || true &&
+                source /opt/ros/humble/setup.bash &&
+                python3 /path_tools/tf_odom_bridge.py"
