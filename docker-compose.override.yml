@@ -1,15 +1,18 @@
 services:
   rosbot:
+    network_mode: host
     environment:
       - ROS_DOMAIN_ID=0
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 
   rplidar:
+    network_mode: host
     environment:
       - ROS_DOMAIN_ID=0
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 
   navigation:
+    network_mode: host
     environment:
       - ROS_DOMAIN_ID=0
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
@@ -20,21 +23,25 @@ services:
     #            ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 map odom"
 
   microros:
+    network_mode: host
     environment:
       - ROS_DOMAIN_ID=0
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 
   foxglove:
+    network_mode: host
     environment:
       - ROS_DOMAIN_ID=0
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 
   foxglove-ds:
+    network_mode: host
     environment:
       - ROS_DOMAIN_ID=0
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 
   path_tools:
+    network_mode: host
     environment:
       - ROS_DOMAIN_ID=0
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
@@ -42,10 +49,10 @@ services:
   # Pequeño puente que GARANTIZA odom→base_link desde /odometry/filtered
   # hasta que comprobemos que el EKF lo publica estable por sí mismo.
   tf_bridge:
+    network_mode: host
     image: ${ROS_IMAGE:-ros:humble-ros-core}
     depends_on:
       - rosbot
-    networks: [default]
     environment:
       - ROS_DOMAIN_ID=0
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
@@ -60,6 +67,7 @@ services:
 
   # Teleop por teclado (vuelve a estar disponible para `just teleop`)
   teleop:
+    network_mode: host
     image: husarion/rosbot-xl:humble-0.10.0-20240202
     environment:
       - ROS_DOMAIN_ID=0
