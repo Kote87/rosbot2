@@ -143,7 +143,8 @@ _install-yq:
 
 teleop:
     @echo "Starting sensors + SLAM + teleop…"
-    docker compose -f compose.yaml -f docker-compose.override.yml up -d
+    docker compose -f compose.yaml -f docker-compose.override.yml up -d \
+      rosbot rplidar navigation microros scan_filter tf_bridge foxglove foxglove-ds teleop
     @echo ""
     @echo "╭───────────────────────────────────────────"
     @echo "│  TELEOP  (W/S = adelante/atrás)"
@@ -170,12 +171,12 @@ play-path name:
                  --file /routes/{{name}}.yaml"
 
 ## Reproducir un recorrido con NTP (NavigateThroughPoses) – movimiento fluido
-play-ntp name:
-    @echo "Ejecutando recorrido (NTP) {{name}}"
+play-ntp ruta:
+    @echo "Ejecutando recorrido (NTP) {{ruta}}"
     docker exec -it $(docker compose ps -q path_tools) \
         bash -c "source /opt/ros/humble/setup.bash && \
                  python3 /scripts/nav_through_poses.py \
-                 --file /routes/{{name}}.yaml"
+                 --file /routes/{{ruta}}.yaml"
 # ────────────────────────────────────────────────────────────────
 #  start-route  →  Arranca ROSbot con mapa fijo y reproduce una ruta
 #     Uso:  just start-route mi_ruta        # (omite la extensión .yaml)
