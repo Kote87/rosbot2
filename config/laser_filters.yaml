@@ -1,29 +1,30 @@
-# config/laser_filters.yaml
 scan_to_scan_filter_chain:
   ros__parameters:
     output_queue_size: 1
     scan_filter_chain:
+      # Quita el cuerpo del robot en base_link:
       - name: remove_robot_body
         type: laser_filters/LaserScanBoxFilter
         params:
           box_frame: base_link
           min_x: -0.23
-          max_x:  0.23
+          max_x: 0.23
           min_y: -0.20
-          max_y:  0.20
+          max_y: 0.20
           min_z: -1.0
-          max_z:  1.0
+          max_z: 1.0
           invert: false
 
+      # Limpieza de cantos y speckles:
       - name: shadows
         type: laser_filters/ScanShadowsFilter
         params:
           min_angle: 0.0
           max_angle: 170.0
           neighbors: 20
-          window: 1
+          window: 0
 
       - name: median
         type: laser_filters/LaserScanMedianFilter
         params:
-          window: 5
+          window: 7
