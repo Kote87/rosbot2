@@ -59,10 +59,17 @@ services:
     # Coloca el script en ./path_tools/tf_odom_bridge.py (te lo dejo abajo)
     volumes:
       - ./path_tools:/path_tools:ro
-    # No instales nada en caliente; la imagen ya trae tf2_ros en Python.
+    # Asegura que tf2_ros y dependencias estén disponibles antes de lanzar el script.
     command: >
-      bash -lc "source /opt/ros/humble/setup.bash &&
-                python3 /path_tools/tf_odom_bridge.py 2>&1 | tee /tmp/tf_bridge.log"
+      bash -lc "
+        set -e;
+        . /opt/ros/humble/setup.bash;
+        apt-get update -qq &&
+        apt-get install -y -qq ros-humble-tf2-ros ros-humble-geometry-msgs ros-humble-nav-msgs python3-pip;
+        python3 -c 'import tf2_ros' || (echo 'tf2_ros no disponible' && exit 1);
+        python3 /path_tools/tf_odom_bridge.py 2>&1 | tee /tmp/tf_bridge.log
+      "
+    restart: unless-stopped
 
   # Teleop por teclado (vuelve a estar disponible para `just teleop`)
   teleop:
