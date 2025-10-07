@@ -2,7 +2,6 @@ scan_to_scan_filter_chain:
   ros__parameters:
     output_queue_size: 1
     scan_filter_chain:
-      # Quita el cuerpo del robot en base_link:
       - name: remove_robot_body
         type: laser_filters/LaserScanBoxFilter
         params:
@@ -15,7 +14,6 @@ scan_to_scan_filter_chain:
           max_z: 1.0
           invert: false
 
-      # Limpieza de cantos y speckles:
       - name: shadows
         type: laser_filters/ScanShadowsFilter
         params:

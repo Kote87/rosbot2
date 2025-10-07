@@ -50,7 +50,7 @@ services:
   # hasta que comprobemos que el EKF lo publica estable por sí mismo.
   tf_bridge:
     network_mode: host
-    image: ${ROS_IMAGE:-ros:humble-ros-core}
+    image: ${ROS_IMAGE:-ros:humble-ros-base}
     depends_on:
       - rosbot
     environment:
@@ -60,9 +60,11 @@ services:
     volumes:
       - ./path_tools:/path_tools:ro
     command: >
-      bash -lc "apt-get update && apt-get install -y python3-pip &&
-                pip3 install rclpy tf-transformations > /dev/null 2>&1 || true &&
-                source /opt/ros/humble/setup.bash &&
+      bash -lc "set -e;
+                apt-get update;
+                apt-get install -y --no-install-recommends \
+                  ros-humble-tf2-ros ros-humble-nav-msgs python3-pip;
+                source /opt/ros/humble/setup.bash;
                 python3 /path_tools/tf_odom_bridge.py"
 
   # Teleop por teclado (vuelve a estar disponible para `just teleop`)
