@@ -143,15 +143,14 @@ _install-yq:
 
 teleop:
     @echo "Starting sensors + SLAM + teleop…"
-    docker compose -f compose.yaml -f docker-compose.override.yml -f foxglove-hostfix.override.yml -f ekf-config.override.yml up -d \
-      rosbot rplidar navigation microros scan_filter ekf foxglove foxglove-ds teleop
+    docker compose -f compose.yaml -f docker-compose.override.yml up -d
     @echo ""
     @echo "╭───────────────────────────────────────────"
     @echo "│  TELEOP  (W/S = adelante/atrás)"
     @echo "│          A/D = girar;  Q/E = giro suave"
     @echo "│  Salir sin matar:  Ctrl-P  Ctrl-Q"
     @echo "╰───────────────────────────────────────────"
-    docker attach $(docker compose -f compose.yaml -f docker-compose.override.yml -f foxglove-hostfix.override.yml -f ekf-config.override.yml ps -q teleop)
+    docker attach $(docker compose -f compose.yaml -f docker-compose.override.yml ps -q teleop)
 
 # ------------------ Rutas grabadas ---------------------------------
 
@@ -171,12 +170,12 @@ play-path name:
                  --file /routes/{{name}}.yaml"
 
 ## Reproducir un recorrido con NTP (NavigateThroughPoses) – movimiento fluido
-play-ntp ruta:
-    @echo "Ejecutando recorrido (NTP) {{ruta}}"
+play-ntp name:
+    @echo "Ejecutando recorrido (NTP) {{name}}"
     docker exec -it $(docker compose ps -q path_tools) \
         bash -c "source /opt/ros/humble/setup.bash && \
                  python3 /scripts/nav_through_poses.py \
-                 --file /routes/{{ruta}}.yaml"
+                 --file /routes/{{name}}.yaml"
 # ────────────────────────────────────────────────────────────────
 #  start-route  →  Arranca ROSbot con mapa fijo y reproduce una ruta
 #     Uso:  just start-route mi_ruta        # (omite la extensión .yaml)
@@ -241,156 +240,3 @@ start-ntp ruta="mi_ruta":
 # ────────────────────────────────────────────────────────────────
 ruta1:
     just start-route mi_ruta
-
-# --- Diagnóstico ODOM/TF sin y con Nav2 ------------------------
-diag-odom-tf:
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    echo "▶ Drivers + Lidar + Filtro + micro-ROS"
-    docker compose up -d microros rosbot rplidar scan_filter
-
-    echo
-    echo "▶ Chequeos dentro de 'rosbot'"
-    docker compose exec rosbot bash -lc '
-      source /opt/ros/humble/setup.bash
-      echo "== nodos =="; ros2 node list || true
-      echo "== Odometry topics =="; ros2 topic list | grep -E "/rosbot_xl_base_controller/odom$|^/odometry/filtered$" || true
-      echo "== info /rosbot_xl_base_controller/odom =="; ros2 topic info -v /rosbot_xl_base_controller/odom || true
-      echo "== info /odometry/filtered ==";             ros2 topic info -v /odometry/filtered || true
-      echo "== hz /rosbot_xl_base_controller/odom (8s) =="; timeout 8 ros2 topic hz /rosbot_xl_base_controller/odom || true
-      echo "== hz /odometry/filtered (8s) ==";             timeout 8 ros2 topic hz /odometry/filtered || true
-      echo "== TF odom->base_link (8s) ==";                 timeout 8 ros2 run tf2_ros tf2_echo odom base_link || true
-    '
-
-    echo
-    echo "▶ Lanzando Nav2 (para map->odom)"
-    docker compose up -d navigation
-
-    echo
-    echo "▶ Chequeos dentro de 'navigation'"
-    docker compose exec navigation bash -lc '
-      source /opt/ros/humble/setup.bash
-      echo "== TF map->odom (8s) ==";       timeout 8 ros2 run tf2_ros tf2_echo map odom || true
-      echo "== TF odom->base_link (8s) =="; timeout 8 ros2 run tf2_ros tf2_echo odom base_link || true
-    '
-
-# --- Bridge temporal ODOM→TF (si el base no publica odom->base_link) ----
-bridge-odom-tf:
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    echo "▶ Creando /tmp/odom_tf_bridge.py dentro de 'rosbot' (sin heredoc en just)"
-    docker compose exec -T rosbot bash -lc '
-      set -e
-      tmp=/tmp/odom_tf_bridge.py
-      : > "$tmp"
-      printf "%s\n" "import rclpy" >> "$tmp"
-      printf "%s\n" "from rclpy.node import Node" >> "$tmp"
-      printf "%s\n" "from nav_msgs.msg import Odometry" >> "$tmp"
-      printf "%s\n" "from tf2_ros import TransformBroadcaster" >> "$tmp"
-      printf "%s\n" "from geometry_msgs.msg import TransformStamped" >> "$tmp"
-      printf "%s\n" "" >> "$tmp"
-      printf "%s\n" "SRC_TOPICS = [\x22/rosbot_xl_base_controller/odom\x22, \x22/odometry/filtered\x22]" >> "$tmp"
-      printf "%s\n" "" >> "$tmp"
-      printf "%s\n" "class OdomTFBridge(Node):" >> "$tmp"
-      printf "%s\n" "    def __init__(self):" >> "$tmp"
-      printf "%s\n" "        super().__init__(\x22odom_tf_bridge\x22)" >> "$tmp"
-      printf "%s\n" "        self.br = TransformBroadcaster(self)" >> "$tmp"
-      printf "%s\n" "        self.pub = self.create_publisher(Odometry, \x22/odom\x22, 10)" >> "$tmp"
-      printf "%s\n" "        self.subs = [self.create_subscription(Odometry, t, self.cb, 10) for t in SRC_TOPICS]" >> "$tmp"
-      printf "%s\n" "        self.get_logger().info(f\x22Esperando odometría en: {SRC_TOPICS}\x22)" >> "$tmp"
-      printf "%s\n" "" >> "$tmp"
-      printf "%s\n" "    def cb(self, msg: Odometry):" >> "$tmp"
-      printf "%s\n" "        msg.header.frame_id = \x22odom\x22" >> "$tmp"
-      printf "%s\n" "        if not msg.child_frame_id:" >> "$tmp"
-      printf "%s\n" "            msg.child_frame_id = \x22base_link\x22" >> "$tmp"
-      printf "%s\n" "        self.pub.publish(msg)" >> "$tmp"
-      printf "%s\n" "        t = TransformStamped()" >> "$tmp"
-      printf "%s\n" "        t.header.stamp = self.get_clock().now().to_msg()" >> "$tmp"
-      printf "%s\n" "        t.header.frame_id = \x22odom\x22" >> "$tmp"
-      printf "%s\n" "        t.child_frame_id  = msg.child_frame_id" >> "$tmp"
-      printf "%s\n" "        t.transform.translation.x = msg.pose.pose.position.x" >> "$tmp"
-      printf "%s\n" "        t.transform.translation.y = msg.pose.pose.position.y" >> "$tmp"
-      printf "%s\n" "        t.transform.translation.z = msg.pose.pose.position.z" >> "$tmp"
-      printf "%s\n" "        t.transform.rotation      = msg.pose.pose.orientation" >> "$tmp"
-      printf "%s\n" "        self.br.sendTransform(t)" >> "$tmp"
-      printf "%s\n" "" >> "$tmp"
-      printf "%s\n" "rclpy.init()" >> "$tmp"
-      printf "%s\n" "try:" >> "$tmp"
-      printf "%s\n" "    rclpy.spin(OdomTFBridge())" >> "$tmp"
-      printf "%s\n" "finally:" >> "$tmp"
-      printf "%s\n" "    rclpy.shutdown()" >> "$tmp"
-      nohup python3 "$tmp" >/tmp/odom_tf_bridge.log 2>&1 &
-    '
-
-    echo
-    echo "▶ Verificando TF odom->base_link"
-    docker compose exec -T rosbot bash -lc '
-      source /opt/ros/humble/setup.bash
-      timeout 8 ros2 run tf2_ros tf2_echo odom base_link || true
-    '
-
-# --- Bridge ODOM→TF con QoS explícitos (FIX: retener suscripciones) -------------
-bridge-odom-tf-qos:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    docker compose exec -T rosbot bash -lc '
-      source /opt/ros/humble/setup.bash
-      tmp=/tmp/odom_tf_bridge_qos.py
-      : > "$tmp"
-      printf "%s\n" "import rclpy" >> "$tmp"
-      printf "%s\n" "from rclpy.node import Node" >> "$tmp"
-      printf "%s\n" "from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy, QoSDurabilityPolicy" >> "$tmp"
-      printf "%s\n" "from nav_msgs.msg import Odometry" >> "$tmp"
-      printf "%s\n" "from tf2_ros import TransformBroadcaster" >> "$tmp"
-      printf "%s\n" "from geometry_msgs.msg import TransformStamped" >> "$tmp"
-      printf "%s\n" "" >> "$tmp"
-      printf "%s\n" "qos_best = QoSProfile(depth=10)" >> "$tmp"
-      printf "%s\n" "qos_best.reliability = QoSReliabilityPolicy.BEST_EFFORT" >> "$tmp"
-      printf "%s\n" "qos_best.history = QoSHistoryPolicy.KEEP_LAST" >> "$tmp"
-      printf "%s\n" "qos_best.durability = QoSDurabilityPolicy.VOLATILE" >> "$tmp"
-      printf "%s\n" "qos_rel = QoSProfile(depth=10)" >> "$tmp"
-      printf "%s\n" "" >> "$tmp"
-      printf "%s\n" "class OdomTFBridge(Node):" >> "$tmp"
-      printf "%s\n" "    def __init__(self):" >> "$tmp"
-      printf "%s\n" "        super().__init__(\"odom_tf_bridge_qos\")" >> "$tmp"
-      printf "%s\n" "        self.br  = TransformBroadcaster(self)" >> "$tmp"
-      printf "%s\n" "        self.pub = self.create_publisher(Odometry, \"/odom\", 10)" >> "$tmp"
-      printf "%s\n" "        # RETENER suscripciones para evitar GC:" >> "$tmp"
-      printf "%s\n" "        self.sub_odom     = self.create_subscription(Odometry, \"/rosbot_xl_base_controller/odom\", self.cb, qos_best)" >> "$tmp"
-      printf "%s\n" "        self.sub_filtered = self.create_subscription(Odometry, \"/odometry/filtered\",              self.cb, qos_rel)" >> "$tmp"
-      printf "%s\n" "        self.first = True" >> "$tmp"
-      printf "%s\n" "        self.get_logger().info(\"Bridge activo: BEST_EFFORT + RELIABLE\")" >> "$tmp"
-      printf "%s\n" "" >> "$tmp"
-      printf "%s\n" "    def cb(self, msg: Odometry):" >> "$tmp"
-      printf "%s\n" "        if self.first:" >> "$tmp"
-      printf "%s\n" "            self.get_logger().info(f\"Primer odom recibido: {msg.header.frame_id} -> {msg.child_frame_id}\")" >> "$tmp"
-      printf "%s\n" "            self.first = False" >> "$tmp"
-      printf "%s\n" "        # Normaliza frames" >> "$tmp"
-      printf "%s\n" "        msg.header.frame_id = \"odom\"" >> "$tmp"
-      printf "%s\n" "        if not msg.child_frame_id:" >> "$tmp"
-      printf "%s\n" "            msg.child_frame_id = \"base_link\"" >> "$tmp"
-      printf "%s\n" "        self.pub.publish(msg)" >> "$tmp"
-      printf "%s\n" "        # TF dinámica con sello del mensaje" >> "$tmp"
-      printf "%s\n" "        t = TransformStamped()" >> "$tmp"
-      printf "%s\n" "        t.header.stamp = msg.header.stamp" >> "$tmp"
-      printf "%s\n" "        t.header.frame_id = \"odom\"" >> "$tmp"
-      printf "%s\n" "        t.child_frame_id  = msg.child_frame_id" >> "$tmp"
-      printf "%s\n" "        t.transform.translation.x = msg.pose.pose.position.x" >> "$tmp"
-      printf "%s\n" "        t.transform.translation.y = msg.pose.pose.position.y" >> "$tmp"
-      printf "%s\n" "        t.transform.translation.z = msg.pose.pose.position.z" >> "$tmp"
-      printf "%s\n" "        t.transform.rotation      = msg.pose.pose.orientation" >> "$tmp"
-      printf "%s\n" "        self.br.sendTransform(t)" >> "$tmp"
-      printf "%s\n" "" >> "$tmp"
-      printf "%s\n" "rclpy.init()" >> "$tmp"
-      printf "%s\n" "try:" >> "$tmp"
-      printf "%s\n" "    rclpy.spin(OdomTFBridge())" >> "$tmp"
-      printf "%s\n" "finally:" >> "$tmp"
-      printf "%s\n" "    rclpy.shutdown()" >> "$tmp"
-      nohup python3 -u "$tmp" >/tmp/odom_tf_bridge.log 2>&1 &
-      sleep 1
-      echo "== proceso bridge =="; pgrep -fal odom_tf_bridge_qos || true
-      echo "== TF odom->base_link (8s) =="; timeout 8 ros2 run tf2_ros tf2_echo odom base_link || true
-      echo "== log bridge (cola) =="; tail -n 50 /tmp/odom_tf_bridge.log || true
-    '

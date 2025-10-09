@@ -1,109 +1,99 @@
+version: "3.8"
+
 services:
+  ###############################################################
+  # 1) rosbot: drivers con cámara OAK
+  ###############################################################
   rosbot:
-    depends_on:
-      microros:
-        condition: service_started
-    network_mode: host
-    environment:
-      ROS_DOMAIN_ID: "0"
-      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
-    # Sobrescribe el command para lanzar bringup y, cuando el manager exista,
-    # spawnear joint_state_broadcaster y rosbot_xl_base_controller.
-    command: >
-      bash -lc "
-        source /opt/ros/humble/setup.bash &&
-        ros2 launch rosbot_xl_bringup bringup.launch.py
-          mecanum:=${MECANUM:-True}
-          depthai_params_file:=/config/oak_1080p.yaml &
-        LAUNCH_PID=$$!;
-        # Espera a que el controller_manager exponga servicios
-        until ros2 service list | grep -q '/controller_manager/list_controllers'; do sleep 0.5; done;
-        # Spawners (idempotentes)
-        ros2 run controller_manager spawner joint_state_broadcaster \
-          --controller-manager /controller_manager --controller-manager-timeout 120 || true;
-        ros2 run controller_manager spawner rosbot_xl_base_controller \
-          --controller-manager /controller_manager --controller-manager-timeout 120 || true;
-        wait $$LAUNCH_PID
-      "
-
-  rplidar:
-    network_mode: host
-    environment:
-      ROS_DOMAIN_ID: "0"
-      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
-
-  navigation:
-    network_mode: host
-    environment:
-      ROS_DOMAIN_ID: "0"
-      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
-      MAP: "${MAP:-r1}"
-    # Activa el static publisher map→odom SOLO cuando NO uses SLAM.
-    # Si vas a usar SLAM, deja este command comentado.
-    #command: >
-    #  bash -lc "source /opt/ros/humble/setup.bash &&
-    #            ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 map odom"
-
-  microros:
-    ports: []
-    network_mode: host
-    environment:
-      ROS_DOMAIN_ID: "0"
-      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
-
-  foxglove:
-    ports: []
-    network_mode: host
-    environment:
-      ROS_DOMAIN_ID: "0"
-      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
-      DS_TYPE: foxglove-websocket
-      DS_PORT: "8765"
-      DS_HOST: "localhost"
-      UI_PORT: "8080"
-      DISABLE_CACHE: "true"
-      DISABLE_INTERACTION: "false"
-
-  foxglove-ds:
-    network_mode: host
-    environment:
-      ROS_DOMAIN_ID: "0"
-      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
-
-  path_tools:
-    network_mode: host
-    environment:
-      ROS_DOMAIN_ID: "0"
-      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
-
-
-  # Teleop por teclado (vuelve a estar disponible para `just teleop`)
-  teleop:
-    network_mode: host
     image: husarion/rosbot-xl:humble-0.10.0-20240202
-    environment:
-      ROS_DOMAIN_ID: "0"
-      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+    network_mode: host
+    privileged: true
+    restart: unless-stopped
+    environment: [ ROS_DOMAIN_ID=0 ]
+    volumes:
+      - ./maps:/maps
+      - ./config/oak_1080p.yaml:/config/oak_1080p.yaml:ro
+    command: >
+      ros2 launch rosbot_xl_bringup bringup.launch.py
+        mecanum:=${MECANUM:-True}
+        depthai_params_file:=/config/oak_1080p.yaml
+
+  ###############################################################
+  # 2) teleop_twist_keyboard (mover el robot)
+  ###############################################################
+  teleop:
+    image: husarion/rosbot-xl:humble-0.10.0-20240202
+    network_mode: host
+    privileged: true
     stdin_open: true
     tty: true
+    environment: [ ROS_DOMAIN_ID=0 ]
     depends_on:
-      - rosbot
+      rosbot: { condition: service_started }   # tolera que rosbot no tenga healthcheck
     command: >
-      bash -lc "source /opt/ros/humble/setup.bash &&
-                ros2 run teleop_twist_keyboard teleop_twist_keyboard cmd_vel:=/cmd_vel"
+      bash -c "source /opt/ros/humble/setup.bash &&
+               ros2 run teleop_twist_keyboard teleop_twist_keyboard
+                 cmd_vel:=/cmd_vel"
 
-  ekf:
+  ###############################################################
+  # 3) Navigation 2 (activo: genera /map)
+  ###############################################################
+  navigation:
+    volumes:
+      - ./maps:/home/husarion/rosbotxl/maps
+
+  ###############################################################
+  # 4) explore_lite dormido (evita exploración autónoma)
+  ###############################################################
+  explore_lite:
+    command: [ "bash","-c","echo 'explore_lite disabled'; sleep infinity" ]
+
+  ###############################################################
+  # 5) Foxglove‑bridge con buffer / canales amplios
+  ###############################################################
+  foxglove-ds:
+    image: husarion/foxglove-bridge:humble-0.7.3-20240108
+    restart: unless-stopped
+    command: >
+      ros2 launch foxglove_bridge foxglove_bridge_launch.xml
+        port:=8765
+        capabilities:=[clientPublish,connectionGraph,assets]
+    depends_on:
+      rplidar:
+        condition: service_started
+
+  ###############################################################
+  # 6) Foxglove Studio (UI) – sin cambios
+  ###############################################################
+  # foxglove  se queda tal y como está en tu compose.yaml
+
+###############################################################
+# 7) Static transform  (láser → óptica con rotación estándar)
+###############################################################
+  static_tf:
     image: husarion/rosbot-xl:humble-0.10.0-20240202
     network_mode: host
     restart: unless-stopped
-    depends_on:
-      - rosbot
-    environment:
-      ROS_DOMAIN_ID: "0"
-      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+    environment: [ ROS_DOMAIN_ID=0 ]
+    command: [ "ros2", "run", "tf2_ros", "static_transform_publisher",
+               "0", "0", "0",              # x y z
+               "-1.5708", "0", "1.5708",   # roll pitch yaw (láser→optical)
+               "laser", "oak_rgb_camera_optical_frame" ]
+
+###############################################################
+# 8) Overlay  (imagen OAK + puntos RPLIDAR)
+###############################################################
+  overlay:
+    image: husarion/rosbot-xl:humble-0.10.0-20240202
+    network_mode: host
+    restart: unless-stopped
+    environment: [ ROS_DOMAIN_ID=0 ]
     volumes:
-      - ./config/ekf.yaml:/config/ekf.yaml:ro
-    command: >
-      bash -lc "source /opt/ros/humble/setup.bash &&
-                ros2 run robot_localization ekf_node
-                --ros-args --params-file /config/ekf.yaml"
+      - ./scripts/lidar_overlay.py:/overlay.py:ro
+    command: [ "bash", "-c",
+               "apt-get update -qq && apt-get install -y python3-opencv && \
+                python3 /overlay.py" ]
+    depends_on:
+      static_tf:
+        condition: service_started
+
