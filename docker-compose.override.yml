@@ -1,9 +1,30 @@
 services:
   rosbot:
+    depends_on:
+      microros:
+        condition: service_started
     network_mode: host
     environment:
       ROS_DOMAIN_ID: "0"
       RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+    # Sobrescribe el command para lanzar bringup y, cuando el manager exista,
+    # spawnear joint_state_broadcaster y rosbot_xl_base_controller.
+    command: >
+      bash -lc "
+        source /opt/ros/humble/setup.bash &&
+        ros2 launch rosbot_xl_bringup bringup.launch.py
+          mecanum:=${MECANUM:-True}
+          depthai_params_file:=/config/oak_1080p.yaml &
+        LAUNCH_PID=$!;
+        # Espera a que el controller_manager exponga servicios
+        until ros2 service list | grep -q '/controller_manager/list_controllers'; do sleep 0.5; done;
+        # Spawners (idempotentes)
+        ros2 run controller_manager spawner joint_state_broadcaster \
+          --controller-manager /controller_manager --controller-manager-timeout 120 || true;
+        ros2 run controller_manager spawner rosbot_xl_base_controller \
+          --controller-manager /controller_manager --controller-manager-timeout 120 || true;
+        wait $LAUNCH_PID
+      "
 
   rplidar:
     network_mode: host
@@ -38,7 +59,7 @@ services:
       RMW_IMPLEMENTATION: rmw_fastrtps_cpp
       DS_TYPE: foxglove-websocket
       DS_PORT: "8765"
-      DS_HOST: foxglove-ds
+      DS_HOST: "localhost"
       UI_PORT: "8080"
       DISABLE_CACHE: "true"
       DISABLE_INTERACTION: "false"
