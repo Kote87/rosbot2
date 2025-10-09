@@ -23,12 +23,14 @@ services:
     #            ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 map odom"
 
   microros:
+    ports: []
     network_mode: host
     environment:
       - ROS_DOMAIN_ID=0
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 
   foxglove:
+    ports: []
     network_mode: host
     environment:
       - ROS_DOMAIN_ID=0
@@ -46,30 +48,6 @@ services:
       - ROS_DOMAIN_ID=0
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 
-  # Pequeño puente que GARANTIZA odom→base_link desde /odometry/filtered
-  # hasta que comprobemos que el EKF lo publica estable por sí mismo.
-  tf_bridge:
-    network_mode: host
-    image: ${ROS_IMAGE:-ros:humble-ros-core}
-    depends_on:
-      - rosbot
-    environment:
-      - ROS_DOMAIN_ID=0
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-    # Coloca el script en ./path_tools/tf_odom_bridge.py (te lo dejo abajo)
-    volumes:
-      - ./path_tools:/path_tools:ro
-    # Asegura que tf2_ros y dependencias estén disponibles antes de lanzar el script.
-    command: >
-      bash -lc "
-        set -e;
-        . /opt/ros/humble/setup.bash;
-        apt-get update -qq &&
-        apt-get install -y -qq ros-humble-tf2-ros ros-humble-geometry-msgs ros-humble-nav-msgs python3-pip;
-        python3 -c 'import tf2_ros' || (echo 'tf2_ros no disponible' && exit 1);
-        python3 /path_tools/tf_odom_bridge.py 2>&1 | tee /tmp/tf_bridge.log
-      "
-    restart: unless-stopped
 
   # Teleop por teclado (vuelve a estar disponible para `just teleop`)
   teleop:
@@ -85,3 +63,19 @@ services:
     command: >
       bash -lc "source /opt/ros/humble/setup.bash &&
                 ros2 run teleop_twist_keyboard teleop_twist_keyboard cmd_vel:=/cmd_vel"
+
+  ekf:
+    image: husarion/rosbot-xl:humble-0.10.0-20240202
+    network_mode: host
+    restart: unless-stopped
+    depends_on:
+      - rosbot
+    environment:
+      - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+    volumes:
+      - ./config/ekf.yaml:/config/ekf.yaml:ro
+    command: >
+      bash -lc "source /opt/ros/humble/setup.bash &&
+                ros2 run robot_localization ekf_node
+                --ros-args --params-file /config/ekf.yaml"

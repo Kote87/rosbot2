@@ -144,7 +144,7 @@ _install-yq:
 teleop:
     @echo "Starting sensors + SLAM + teleop…"
     docker compose -f compose.yaml -f docker-compose.override.yml up -d \
-      rosbot rplidar navigation microros scan_filter tf_bridge foxglove foxglove-ds teleop
+      rosbot rplidar navigation microros scan_filter ekf foxglove foxglove-ds teleop
     @echo ""
     @echo "╭───────────────────────────────────────────"
     @echo "│  TELEOP  (W/S = adelante/atrás)"
