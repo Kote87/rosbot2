@@ -143,7 +143,7 @@ _install-yq:
 
 teleop:
     @echo "Starting sensors + SLAM + teleop…"
-    docker compose -f compose.yaml -f docker-compose.override.yml up -d \
+    docker compose -f compose.yaml -f docker-compose.override.yml -f foxglove-hostfix.override.yml -f ekf-config.override.yml up -d \
       rosbot rplidar navigation microros scan_filter ekf foxglove foxglove-ds teleop
     @echo ""
     @echo "╭───────────────────────────────────────────"
@@ -151,7 +151,7 @@ teleop:
     @echo "│          A/D = girar;  Q/E = giro suave"
     @echo "│  Salir sin matar:  Ctrl-P  Ctrl-Q"
     @echo "╰───────────────────────────────────────────"
-    docker attach $(docker compose -f compose.yaml -f docker-compose.override.yml ps -q teleop)
+    docker attach $(docker compose -f compose.yaml -f docker-compose.override.yml -f foxglove-hostfix.override.yml -f ekf-config.override.yml ps -q teleop)
 
 # ------------------ Rutas grabadas ---------------------------------
 

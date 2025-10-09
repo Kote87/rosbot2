@@ -1,6 +1,6 @@
-ekf_filter_node:
+ekf_node:
   ros__parameters:
-    use_sim_time: false
+    frequency: 30.0
     two_d_mode: true
     publish_tf: true
     map_frame: map
@@ -8,25 +8,27 @@ ekf_filter_node:
     base_link_frame: base_link
     world_frame: odom
 
-    frequency: 50.0
-    sensor_timeout: 0.1
-
-    # Entradas típicas del Rosbot XL (ajusta si tus topics difieren)
+    # Usa la odometría del controlador de base
     odom0: /rosbot_xl_base_controller/odom
-    odom0_config: [true, true, false,
-                   false, false, true,
-                   false, false, false,
-                   false, false, false,
-                   false, false, false]
-    odom0_differential: false
     odom0_queue_size: 10
+    odom0_differential: false
+    odom0_nodelay: true
 
-    imu0: /imu/data
-    imu0_config: [false, false, false,
-                  true,  true,  true,
-                  false, false, false,
-                  false, false, false,
-                  false, false, false]
-    imu0_differential: false
-    imu0_remove_gravitational_acceleration: true
-    imu0_queue_size: 50
+    # Configuración de variables usadas (pose x,y,yaw y twist vx,vyaw)
+    odom0_config: [true,  true,  false,
+                   false, false, true,
+                   true,  true,  false,
+                   false, false, true,
+                   false, false, false]
+
+    # Si más adelante quieres fusionar IMU, descomenta estas líneas
+    # imu0: /imu/data
+    # imu0_queue_size: 10
+    # imu0_remove_gravitational_acceleration: true
+    # imu0_nodelay: true
+    # imu0_differential: false
+    # imu0_config: [false, false, false,
+    #               true,  true,  true,
+    #               false, false, false,
+    #               false, false, true,
+    #               false, false, false]
