@@ -8,16 +8,26 @@ ekf_node:
     base_link_frame: "base_link"
     world_frame: "odom"
 
-    odom0: "/odometry/wheels"
-    odom0_config: [false, false, false,
-                   false, false, false,
-                   true,  true,  false,
-                   false, false, true,
-                   false, false, false]
+    # Fuente 0: odometría del controlador base del ROSbot XL
+    # (en tu diagnóstico y stack es /rosbot_xl_base_controller/odom)
+    odom0: "/rosbot_xl_base_controller/odom"
+    #            x      y      z      R      P      Y      vx     vy     vz     vR     vP     vY     ax     ay     az
+    odom0_config: [false, false, false, false, false, false,  true,  false, false, false, false,  true, false, false, false]
+    # Notas:
+    # - vx=true, vy=false, vYaw=true : diff-drive (sin movimiento lateral)
+    # - no fusionamos posición/orientación absolutas; el EKF integra velocidades
 
-    imu0: "/imu_broadcaster/imu"
-    imu0_config: [false, false, false,
-                  false, false, false,
-                  false, false, false,
-                  false, false, true,
-                  false, false, false]
+    # ---- IMU (habilitar cuando confirmes el tópico exacto) ----
+    # Busca primero el tópico con:
+    #   docker compose exec rosbot bash -lc 'source /opt/ros/humble/setup.bash && ros2 topic list | grep -i imu'
+    #
+    # Ejemplo típico (descomenta y ajusta si existe):
+    # imu0: "/imu_broadcaster/imu"
+    # imu0_config: [false, false, false,
+    #               false, false, false,
+    #               false, false, false,
+    #               false, false,  true,
+    #               false, false, false]
+
+    # Si no hay IMU o no la usas aún, deja comentado el bloque 'imu0'.
+    # El EKF funcionará solo con odometría de ruedas y publicará odom->base_link.
