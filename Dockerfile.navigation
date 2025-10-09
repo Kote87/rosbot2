@@ -4,11 +4,11 @@ FROM husarion/navigation2:humble-1.1.12-20240123
 RUN set -euo pipefail; \
     rm -f /etc/apt/sources.list.d/ros2.list /etc/apt/sources.list.d/ros2-latest.list; \
     apt-get update; \
-    apt-get install -y --no-install-recommends ca-certificates curl; \
+    apt-get install -y --no-install-recommends ca-certificates curl gnupg; \
     rm -rf /var/lib/apt/lists/*; \
     mkdir -p /usr/share/keyrings; \
-    curl -fsSL https://raw.githubusercontent.com/ros/rosdistro/master/ros-archive-keyring.gpg \
-      -o /usr/share/keyrings/ros-archive-keyring.gpg; \
+    curl -fsSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+      | gpg --batch --yes --dearmor -o /usr/share/keyrings/ros-archive-keyring.gpg; \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
       http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo \"${UBUNTU_CODENAME}\") main" \
       > /etc/apt/sources.list.d/ros2.list
