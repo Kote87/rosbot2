@@ -120,10 +120,29 @@ if your hardware requires a different configuration.
   [m-explore-ros2](https://github.com/robo-friends/m-explore-ros2) repository
   and launches automatically with this command.
 
-   The parameters used by `explore_lite` are stored in
-   `config/explore_params.yaml`.  Edit this file to adjust options such as
-   `planner_frequency` or `progress_timeout` and restart the Compose stack to
-   apply the changes.
+ The parameters used by `explore_lite` are stored in
+  `config/explore_params.yaml`.  Edit this file to adjust options such as
+  `planner_frequency` or `progress_timeout` and restart the Compose stack to
+  apply the changes.
+
+#### Extended Kalman Filter for odometry fusion
+
+The navigation container now launches the
+[`robot_localization`](https://docs.ros.org/en/rolling/p/robot_localization/)
+`ekf_node` alongside Nav2.  The filter fuses wheel odometry from
+`/odometry/wheels` with the IMU data published on `/imu_broadcaster/imu` and
+publishes the fused estimate on `/odometry/filtered` while also maintaining the
+`odom → base_link` transform.
+
+- The filter parameters live in `config/ekf.yaml`.  Update the topic names if
+  your robot exposes different interfaces and restart the Compose stack for the
+  changes to take effect.
+- The Docker image used by the navigation service is built locally from
+  `Dockerfile.navigation`, which installs the `ros-humble-robot-localization`
+  package required by the EKF node.
+- The launch helper script `scripts/start_navigation_with_ekf.sh` starts the EKF
+  before running the Husarion bring-up launch file so the transform tree is
+  ready when Nav2 activates.
 
 ### 🚗 Step 5: Control the ROSbot from a Web Browser
 
