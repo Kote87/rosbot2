@@ -2,20 +2,21 @@ services:
   rosbot:
     network_mode: host
     environment:
-      - ROS_DOMAIN_ID=0
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      ROS_DOMAIN_ID: "0"
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
 
   rplidar:
     network_mode: host
     environment:
-      - ROS_DOMAIN_ID=0
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      ROS_DOMAIN_ID: "0"
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
 
   navigation:
     network_mode: host
     environment:
-      - ROS_DOMAIN_ID=0
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      ROS_DOMAIN_ID: "0"
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+      MAP: "${MAP:-r1}"
     # Activa el static publisher map→odom SOLO cuando NO uses SLAM.
     # Si vas a usar SLAM, deja este command comentado.
     #command: >
@@ -26,27 +27,33 @@ services:
     ports: []
     network_mode: host
     environment:
-      - ROS_DOMAIN_ID=0
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      ROS_DOMAIN_ID: "0"
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
 
   foxglove:
     ports: []
     network_mode: host
     environment:
-      - ROS_DOMAIN_ID=0
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      ROS_DOMAIN_ID: "0"
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+      DS_TYPE: foxglove-websocket
+      DS_PORT: "8765"
+      DS_HOST: foxglove-ds
+      UI_PORT: "8080"
+      DISABLE_CACHE: "true"
+      DISABLE_INTERACTION: "false"
 
   foxglove-ds:
     network_mode: host
     environment:
-      - ROS_DOMAIN_ID=0
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      ROS_DOMAIN_ID: "0"
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
 
   path_tools:
     network_mode: host
     environment:
-      - ROS_DOMAIN_ID=0
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      ROS_DOMAIN_ID: "0"
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
 
 
   # Teleop por teclado (vuelve a estar disponible para `just teleop`)
@@ -54,8 +61,8 @@ services:
     network_mode: host
     image: husarion/rosbot-xl:humble-0.10.0-20240202
     environment:
-      - ROS_DOMAIN_ID=0
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      ROS_DOMAIN_ID: "0"
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
     stdin_open: true
     tty: true
     depends_on:
@@ -71,8 +78,8 @@ services:
     depends_on:
       - rosbot
     environment:
-      - ROS_DOMAIN_ID=0
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      ROS_DOMAIN_ID: "0"
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
     volumes:
       - ./config/ekf.yaml:/config/ekf.yaml:ro
     command: >
