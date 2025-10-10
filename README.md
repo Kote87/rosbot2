@@ -125,6 +125,25 @@ if your hardware requires a different configuration.
    `planner_frequency` or `progress_timeout` and restart the Compose stack to
    apply the changes.
 
+### 🧭 Sensor fusion and TF availability
+
+The stack now runs a dedicated `localization` container that launches the
+`robot_localization` EKF.  Its parameters live in `config/ekf.yaml`, where we
+fuse wheel odometry velocities with the IMU yaw rate in a 2D filter and publish
+the `odom → base_link` transform required by Nav2.  If you need to tweak the
+fusion weights or topics, edit that YAML file and restart the stack.
+
+To confirm that the transform is available for planners and costmaps, you can
+echo it from any ROS 2 shell (for example inside the `navigation` container):
+
+```bash
+ros2 run tf2_ros tf2_echo odom base_link
+```
+
+You should see the transform updating continuously; if the command times out,
+check that the EKF container is running and that odometry and IMU topics are
+being published with correct frame IDs.
+
 ### 🚗 Step 5: Control the ROSbot from a Web Browser
 
 Open the **Google Chrome** browser on your laptop and navigate to:
