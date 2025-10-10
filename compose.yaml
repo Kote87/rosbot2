@@ -14,18 +14,18 @@ services:
         depthai_params_file:=/config/oak_1080p.yaml
 
   localization:
-    image: husarion/rosbot-xl:humble-0.10.0-20240202
+    image: husarion/rosbot-xl:humble
     container_name: rosbot-localization
-    network_mode: host
-    restart: unless-stopped
-    environment: [ ROS_DOMAIN_ID=0 ]
-    volumes:
-      - ./config/ekf.yaml:/config/ekf.yaml:ro
     depends_on:
       - rosbot
+    environment:
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
+    volumes:
+      - ./config/ekf_odom.yaml:/config/ekf_odom.yaml:ro
     command: >
-      ros2 launch rosbot_localization ekf.launch.py
-        params_file:=/config/ekf.yaml
+      bash -lc "source /opt/ros/humble/setup.bash &&
+                ros2 run robot_localization ekf_node
+                --ros-args --params-file /config/ekf_odom.yaml"
 
   microros:
     image: husarion/micro-ros-agent:humble-3.1.3-20240126
@@ -51,18 +51,6 @@ services:
       timeout: 5s
       start_period: 90s
       retries: 10
-
-  scan_filter:
-    build:
-      context: .
-      dockerfile: Dockerfile.scan_filter
-    network_mode: host
-    restart: unless-stopped
-    environment: [ ROS_DOMAIN_ID=0 ]
-    volumes:
-      - ./config/laser_filters.yaml:/config/laser_filters.yaml:ro
-    depends_on:
-      - rplidar
 
   navigation:
     image: husarion/navigation2:humble-1.1.12-20240123
