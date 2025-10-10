@@ -9,9 +9,17 @@ services:
     volumes:
       - ./config/oak_1080p.yaml:/config/oak_1080p.yaml:ro
     command: >
-      ros2 launch rosbot_xl_bringup bringup.launch.py
-        mecanum:=${MECANUM:-True}
-        depthai_params_file:=/config/oak_1080p.yaml
+      bash -lc '
+        ros2 launch rosbot_xl_bringup bringup.launch.py
+          mecanum:=${MECANUM:-True}
+          depthai_params_file:=/config/oak_1080p.yaml &
+        LAUNCH_PID=$!;
+        # espera breve a que arranque el ekf interno si lo hay
+        sleep 6;
+        # elimina cualquier ekf_node que haya arrancado en este contenedor
+        pkill -f "robot_localization.*ekf_node" || true;
+        wait ${LAUNCH_PID}
+      '
 
   localization:
     image: husarion/rosbot-xl:humble
