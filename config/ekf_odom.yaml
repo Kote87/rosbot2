@@ -1,35 +1,28 @@
-/localization/ekf_filter_node:
+ekf_node:
   ros__parameters:
-    # Frecuencia de fusión
     frequency: 30.0
     two_d_mode: true
-    use_sim_time: false
-
-    # Publicación de TF
     publish_tf: true
+
     map_frame: map
     odom_frame: odom
     base_link_frame: base_link
-    world_frame: odom            # ⇒ EKF publica odom -> base_link
+    world_frame: odom    # <— CLAVE: el EKF publicará odom -> base_link
 
-    # Odometría de ruedas
+    # Ajusta estos tópicos si en tu robot son diferentes:
     odom0: /rosbot_xl_base_controller/odom
-    odom0_config: [
-      false, false, false,
-      false, false, false,
-      true,  true,  false,
-      false, false, true,
-      false, false, false
-    ]
+    odom0_config: [false, false, false,
+                   false, false, false,
+                   true,  true,  false,
+                   false, false, true,
+                   false, false, false]
 
-    # IMU (yaw)
     imu0: /imu_broadcaster/imu
-    imu0_config: [
-      false, false, false,
-      false, false, false,
-      false, false, false,
-      false, false, true,
-      false, false, false
-    ]
+    imu0_config: [false, false, false,
+                  false, false, false,
+                  false, false, false,
+                  false, false, true,
+                  false, false, false]
+
     imu0_differential: false
     imu0_remove_gravitational_acceleration: true
