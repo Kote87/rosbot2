@@ -9,16 +9,10 @@ services:
     environment: [ ROS_DOMAIN_ID=0 ]
     volumes:
       - ./config/oak_1080p.yaml:/config/oak_1080p.yaml:ro
+      - ./config/ekf_internal_off.yaml:/ros2_ws/install/rosbot_xl_bringup/share/rosbot_xl_bringup/config/ekf.yaml:ro
     command: >
       bash -lc '
         set -euo pipefail;
-        # Watchdog: mantén MUERTO el ekf_node interno aunque tenga respawn
-        ( while :; do
-            pkill -x ekf_node >/dev/null 2>&1 \
-            || pkill -f "/robot_localization/ekf_node" >/dev/null 2>&1 \
-            || true;
-            sleep 1;
-          done ) &
         # Desactiva TF del controlador cuando esté listo el controller_manager
         ( until ros2 service list | grep -q "/controller_manager/switch_controller"; do sleep 0.5; done
           ros2 param set /rosbot_xl_base_controller enable_odom_tf false || true
