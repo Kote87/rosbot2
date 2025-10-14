@@ -151,7 +151,12 @@ teleop:
     @echo "│          A/D = girar;  Q/E = giro suave"
     @echo "│  Salir sin matar:  Ctrl-P  Ctrl-Q"
     @echo "╰───────────────────────────────────────────"
-    docker attach $$(docker compose -f compose.yaml -f docker-compose.override.yml ps -q teleop)
+    @container_id=$$(docker compose -f compose.yaml -f docker-compose.override.yml ps -q teleop)
+    @if [ -z "$$container_id" ]; then \
+        echo "⛔  contenedor 'teleop' no está en ejecución"; \
+        exit 1; \
+    fi
+    docker attach $$container_id
 
 # ------------------ Rutas grabadas ---------------------------------
 
