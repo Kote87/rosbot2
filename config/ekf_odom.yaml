@@ -1,4 +1,4 @@
-/localization/ekf:
+/localization/ekf_filter_node:
   ros__parameters:
     # Frecuencia de fusión
     frequency: 30.0

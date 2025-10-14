@@ -32,16 +32,27 @@ services:
     restart: unless-stopped
     environment:
       - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
+    # Forzamos a ejecutar nuestro comando (sin ENTRYPOINT del image):
+    entrypoint: ["/bin/bash","-lc"]
     volumes:
       - ./config/ekf_odom.yaml:/config/ekf_odom.yaml:ro
     command: >
-      bash -lc '
-        source /opt/ros/humble/setup.bash;
-        exec ros2 run robot_localization ekf_node \
-          --ros-args \
-          -r __node:=ekf -r __ns:=/localization \
-          --params-file /config/ekf_odom.yaml
-      '
+      source /opt/ros/humble/setup.bash;
+      export RCUTILS_LOGGING_SEVERITY=DEBUG;
+      echo "[localization] esperando /rosbot_xl_base_controller/odom + /imu_broadcaster/imu...";
+      until ros2 topic list | grep -q '^/rosbot_xl_base_controller/odom$'; do sleep 0.5; done;
+      until ros2 topic list | grep -q '^/imu_broadcaster/imu$'; do sleep 0.5; done;
+      exec ros2 run robot_localization ekf_node
+        --ros-args
+        -r __ns:=/localization
+        --params-file /config/ekf_odom.yaml
+        --log-level debug
+    healthcheck:
+      test: ["CMD-SHELL","bash -lc 'source /opt/ros/humble/setup.bash && ros2 node list | grep -q ^/localization/ekf_filter_node$'"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   microros:
     image: husarion/micro-ros-agent:humble-3.1.3-20240126
