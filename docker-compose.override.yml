@@ -13,10 +13,7 @@ services:
     volumes:
       - ./maps:/maps
       - ./config/oak_1080p.yaml:/config/oak_1080p.yaml:ro
-    command: >
-      ros2 launch rosbot_xl_bringup bringup.launch.py
-        mecanum:=${MECANUM:-True}
-        depthai_params_file:=/config/oak_1080p.yaml
+    # No sobreescribas el command aquí: dejamos el watchdog definido en compose.yaml
 
   ###############################################################
   # 2) teleop_twist_keyboard (mover el robot)
