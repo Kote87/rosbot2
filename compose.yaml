@@ -10,15 +10,22 @@ services:
       - ./config/oak_1080p.yaml:/config/oak_1080p.yaml:ro
     command: >
       bash -lc '
+        set -euo pipefail;
+        # Arranca el bringup en background
         ros2 launch rosbot_xl_bringup bringup.launch.py
           mecanum:=${MECANUM:-True}
           depthai_params_file:=/config/oak_1080p.yaml &
         LAUNCH_PID=$!;
-        # espera breve a que arranque el ekf interno si lo hay
-        sleep 6;
-        # elimina cualquier ekf_node que haya arrancado en este contenedor
-        pkill -f "robot_localization.*ekf_node" || true;
-        wait ${LAUNCH_PID}
+        # Espera a que el ekf interno (ekf_node) arranque y mátalo (máx ~10s)
+        for i in $(seq 1 20); do
+          pgrep -x ekf_node >/dev/null && break || sleep 0.5;
+        done
+        pkill -x ekf_node || true;
+        # Asegura que el controlador NO publique odom->base_link
+        until ros2 service list | grep -q "/controller_manager/switch_controller"; do sleep 0.5; done
+        ros2 param set /rosbot_xl_base_controller enable_odom_tf false || true;
+        # Mantén el bringup en foreground
+        wait $LAUNCH_PID
       '
 
   localization:
@@ -28,15 +35,19 @@ services:
       - rosbot
     environment:
       - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
+      # Namespace dedicado para el EKF externo
+      - ROS_NAMESPACE=/localization
     volumes:
       - ./config/ekf_odom.yaml:/config/ekf_odom.yaml:ro
     command: >
-      bash -lc "source /opt/ros/humble/setup.bash &&
-                ros2 run robot_localization ekf_node
-                --ros-args
-                --params-file /config/ekf_odom.yaml
-                -r __node:=ekf_external
-                -r __ns:=/localization"
+      bash -lc '
+        source /opt/ros/humble/setup.bash;
+        # Nombre único del nodo: /localization/ekf
+        ros2 run robot_localization ekf_node
+          --ros-args
+          --params-file /config/ekf_odom.yaml
+          -r __node:=ekf
+      '
 
   microros:
     image: husarion/micro-ros-agent:humble-3.1.3-20240126
