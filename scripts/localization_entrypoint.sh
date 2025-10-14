@@ -28,6 +28,8 @@ for topic in /rosbot_xl_base_controller/odom /imu_broadcaster/imu; do
 done
 
 echo "[localization] lanzando EKF en ns=/localization (nodo por defecto: ekf_filter_node)"
+# (opcional) traza rápida de TF para verificar que el EKF publica algo al arrancar
+( timeout 8s ros2 topic echo /tf | egrep -i "frame_id|child_frame_id" || true ) &
 exec ros2 run robot_localization ekf_node \
   --ros-args -r __ns:=/localization \
   --params-file /config/ekf_odom.yaml \

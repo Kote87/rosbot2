@@ -6,22 +6,58 @@ services:
     network_mode: host
     privileged: true
     restart: unless-stopped
-    environment: [ ROS_DOMAIN_ID=0 ]
+    environment:
+      - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - ROS_LOCALHOST_ONLY=0
     volumes:
       - ./config/oak_1080p.yaml:/config/oak_1080p.yaml:ro
       - ./config/ekf_internal_off.yaml:/ros2_ws/install/rosbot_xl_bringup/share/rosbot_xl_bringup/config/ekf.yaml:ro
     command: >
       bash -lc '
         set -euo pipefail;
-        # Desactiva TF del controlador cuando esté listo el controller_manager
-        ( until ros2 service list | grep -q "/controller_manager/switch_controller"; do sleep 0.5; done
-          ros2 param set /rosbot_xl_base_controller enable_odom_tf false || true
-        ) &
-        # Lanza el bringup en foreground (sin variables raras tipo LAUNCH_PID)
-        exec ros2 launch rosbot_xl_bringup bringup.launch.py \
+        source /opt/ros/humble/setup.bash;
+
+        # 1) Lanza el bringup en background
+        ros2 launch rosbot_xl_bringup bringup.launch.py \
           mecanum:=${MECANUM:-True} \
-          depthai_params_file:=/config/oak_1080p.yaml
+          depthai_params_file:=/config/oak_1080p.yaml &
+        BRINGUP_PID=$!
+
+        # 2) Espera a controller_manager
+        until ros2 service list | grep -q "/controller_manager/switch_controller"; do sleep 0.5; done
+
+        # 3) Spawnea controladores de forma determinista (idempotente)
+        ros2 run controller_manager spawner joint_state_broadcaster \
+          -c /controller_manager --controller-manager-timeout 20 || true
+        ros2 run controller_manager spawner rosbot_xl_base_controller \
+          -c /controller_manager --controller-manager-timeout 20 || true
+
+        # 4) Desactiva SOLO la TF del base_controller (la odom se sigue publicando)
+        ros2 param set /rosbot_xl_base_controller enable_odom_tf false || true
+
+        # 5) Desactiva la TF del EKF interno (si existiera)
+        ros2 param set /ekf_filter_node publish_tf false || true
+
+        # 6) Bloquea hasta que haya AL MENOS 1 publisher en /rosbot_xl_base_controller/odom
+        echo "[rosbot] esperando publisher /rosbot_xl_base_controller/odom…"
+        for i in $(seq 1 80); do
+          P=$(ros2 topic info /rosbot_xl_base_controller/odom 2>/dev/null | awk "/Publisher count:/ {print \$3}")
+          if [ "${P:-0}" -ge 1 ]; then echo "[rosbot] ODOM publisher OK"; break; fi
+          sleep 0.5
+        done
+
+        wait ${BRINGUP_PID}
       '
+    healthcheck:
+      test: ["CMD-SHELL",
+             "bash -lc 'source /opt/ros/humble/setup.bash && \\
+                        ros2 topic info /rosbot_xl_base_controller/odom 2>/dev/null | \\
+                        grep -q \"Publisher count: 1\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 25s
 
   localization:
     image: husarion/rosbot-xl:humble-0.10.0-20240202
