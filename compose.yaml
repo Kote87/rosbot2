@@ -38,7 +38,6 @@ services:
     restart: unless-stopped
     environment:
       - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
-      - ROS_NAMESPACE=/localization
     volumes:
       - ./config/ekf_odom.yaml:/config/ekf_odom.yaml:ro
     command: >
@@ -46,8 +45,8 @@ services:
         source /opt/ros/humble/setup.bash;
         exec ros2 run robot_localization ekf_node \
           --ros-args \
-          --params-file /config/ekf_odom.yaml \
-          -r __node:=ekf
+          -r __node:=ekf -r __ns:=/localization \
+          --params-file /config/ekf_odom.yaml
       '
 
   microros:
