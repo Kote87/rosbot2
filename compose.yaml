@@ -1,4 +1,3 @@
-version: "3.9"
 services:
 
   rosbot:
@@ -6,75 +5,30 @@ services:
     network_mode: host
     privileged: true
     restart: unless-stopped
-    environment:
-      - ROS_DOMAIN_ID=0
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-      - ROS_LOCALHOST_ONLY=0
+    environment: [ ROS_DOMAIN_ID=0 ]
     volumes:
       - ./config/oak_1080p.yaml:/config/oak_1080p.yaml:ro
-      - ./config/ekf_internal_off.yaml:/ros2_ws/install/rosbot_xl_bringup/share/rosbot_xl_bringup/config/ekf.yaml:ro
     command: >
-      bash -lc '
-        # OJO: no -euo pipefail => más tolerante a fallos transitorios
-        source /opt/ros/humble/setup.bash;
-
-        # 1) Bringup
-        ros2 launch rosbot_xl_bringup bringup.launch.py \
-          mecanum:=${MECANUM:-True} \
-          depthai_params_file:=/config/oak_1080p.yaml &
-        BRINGUP_PID=$!
-
-        # 2) (Opcional) espera a controller_manager
-        for i in $(seq 1 60); do
-          ros2 service list | grep -q "/controller_manager/switch_controller" && break
-          sleep 0.5
-        done
-
-        # 3) NO desactivar la TF del base_controller aquí (Teleop la necesita)
-        #    El EKF interno ya tiene publish_tf=false vía ekf_internal_off.yaml
-
-        # 4) Espera robusta a /odom (sin matar el shell si falla)
-        echo "[rosbot] esperando publisher /rosbot_xl_base_controller/odom…"
-        for i in $(seq 1 200); do
-          P=$(( (ros2 topic info /rosbot_xl_base_controller/odom 2>/dev/null | awk "/Publisher count:/ {print \$3}") || echo 0 ))
-          [ "${P:-0}" -ge 1 ] && echo "[rosbot] ODOM publisher OK" && break
-          sleep 0.5
-        done
-
-        # 5) Mantener el proceso
-        wait $${BRINGUP_PID}
-      '
-    healthcheck:
-      test: ["CMD-SHELL",
-             "bash -lc 'source /opt/ros/humble/setup.bash && \\
-                        ros2 topic info /rosbot_xl_base_controller/odom 2>/dev/null | \\
-                        grep -q \"Publisher count: 1\"'"]
-      interval: 10s
-      timeout: 5s
-      retries: 6
-      start_period: 25s
+      ros2 launch rosbot_xl_bringup bringup.launch.py
+        mecanum:=${MECANUM:-True}
+        depthai_params_file:=/config/oak_1080p.yaml
 
   localization:
-    image: husarion/rosbot-xl:humble-0.10.0-20240202
+    image: husarion/rosbot-xl:humble
     container_name: rosbot-localization
     depends_on:
       - rosbot
-    network_mode: host
-    restart: unless-stopped
     environment:
-      - ROS_DOMAIN_ID=0
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-    init: true
-    entrypoint: ["/bin/bash", "/entrypoint.sh"]
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
     volumes:
       - ./config/ekf_odom.yaml:/config/ekf_odom.yaml:ro
-      - ./scripts/localization_entrypoint.sh:/entrypoint.sh:ro
-    healthcheck:
-      test: ["CMD-SHELL","bash -lc 'source /opt/ros/humble/setup.bash && ros2 node list | grep -q ^/localization/ekf_filter_node$'"]
-      interval: 20s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+    command: >
+      bash -lc "source /opt/ros/humble/setup.bash &&
+                ros2 run robot_localization ekf_node
+                --ros-args
+                --params-file /config/ekf_odom.yaml
+                -r __node:=ekf_external
+                -r __ns:=/localization"
 
   microros:
     image: husarion/micro-ros-agent:humble-3.1.3-20240126
