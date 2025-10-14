@@ -1,4 +1,33 @@
-ekf_node:
+ekf:
+  ros__parameters:
+    frequency: 30.0
+    two_d_mode: true
+    publish_tf: true
+
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: odom    # <— CLAVE: el EKF publicará odom -> base_link
+
+    # Ajusta estos tópicos si en tu robot son diferentes:
+    odom0: /rosbot_xl_base_controller/odom
+    odom0_config: [false, false, false,
+                   false, false, false,
+                   true,  true,  false,
+                   false, false, true,
+                   false, false, false]
+
+    imu0: /imu_broadcaster/imu
+    imu0_config: [false, false, false,
+                  false, false, false,
+                  false, false, false,
+                  false, false, true,
+                  false, false, false]
+
+    imu0_differential: false
+    imu0_remove_gravitational_acceleration: true
+
+ekf_filter_node:
   ros__parameters:
     frequency: 30.0
     two_d_mode: true

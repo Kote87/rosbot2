@@ -1,3 +1,4 @@
+version: "3.9"
 services:
 
   rosbot:
@@ -11,21 +12,16 @@ services:
     command: >
       bash -lc '
         set -euo pipefail;
-        # Arranca el bringup en background
-        ros2 launch rosbot_xl_bringup bringup.launch.py
-          mecanum:=${MECANUM:-True}
-          depthai_params_file:=/config/oak_1080p.yaml &
-        LAUNCH_PID=$!;
-        # Espera a que el ekf interno (ekf_node) arranque y mátalo (máx ~10s)
-        for i in $(seq 1 20); do
-          pgrep -x ekf_node >/dev/null && break || sleep 0.5;
-        done
-        pkill -x ekf_node || true;
-        # Asegura que el controlador NO publique odom->base_link
-        until ros2 service list | grep -q "/controller_manager/switch_controller"; do sleep 0.5; done
-        ros2 param set /rosbot_xl_base_controller enable_odom_tf false || true;
-        # Mantén el bringup en foreground
-        wait $LAUNCH_PID
+        # Watchdog: mantén MUERTO el ekf_node interno aunque tenga respawn
+        ( while :; do pkill -x ekf_node >/dev/null 2>&1 || true; sleep 1; done ) &
+        # Desactiva TF del controlador cuando esté listo el controller_manager
+        ( until ros2 service list | grep -q "/controller_manager/switch_controller"; do sleep 0.5; done
+          ros2 param set /rosbot_xl_base_controller enable_odom_tf false || true
+        ) &
+        # Lanza el bringup en foreground (sin variables raras tipo LAUNCH_PID)
+        exec ros2 launch rosbot_xl_bringup bringup.launch.py \
+          mecanum:=${MECANUM:-True} \
+          depthai_params_file:=/config/oak_1080p.yaml
       '
 
   localization:
@@ -33,19 +29,19 @@ services:
     container_name: rosbot-localization
     depends_on:
       - rosbot
+    network_mode: host
+    restart: unless-stopped
     environment:
       - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
-      # Namespace dedicado para el EKF externo
       - ROS_NAMESPACE=/localization
     volumes:
       - ./config/ekf_odom.yaml:/config/ekf_odom.yaml:ro
     command: >
       bash -lc '
         source /opt/ros/humble/setup.bash;
-        # Nombre único del nodo: /localization/ekf
-        ros2 run robot_localization ekf_node
-          --ros-args
-          --params-file /config/ekf_odom.yaml
+        exec ros2 run robot_localization ekf_node \
+          --ros-args \
+          --params-file /config/ekf_odom.yaml \
           -r __node:=ekf
       '
 
