@@ -33,35 +33,10 @@ services:
     environment:
       - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
     init: true
-    entrypoint: []
+    entrypoint: ["/bin/bash", "/entrypoint.sh"]
     volumes:
       - ./config/ekf_odom.yaml:/config/ekf_odom.yaml:ro
-    command:
-      - bash
-      - -lc
-      - |
-        set -Eeuo pipefail
-        source /opt/ros/humble/setup.bash
-        echo "[localization] arrancando en $(hostname) — $(date)"
-        echo "[localization] comprobando 'robot_localization'…"
-        if ! ros2 pkg executables robot_localization >/dev/null 2>&1; then
-          echo "[FATAL] package 'robot_localization' NO está instalado en esta imagen."
-          echo "[INFO ] imagen: husarion/rosbot-xl:humble-0.10.0-20240202 (requerida)"
-          sleep 600
-        fi
-        echo "[localization] YAML en /config/ekf_odom.yaml:"
-        sed -n '1,200p' /config/ekf_odom.yaml || true
-        echo "[localization] esperando /rosbot_xl_base_controller/odom y /imu_broadcaster/imu…"
-        for t in /rosbot_xl_base_controller/odom /imu_broadcaster/imu; do
-          for i in $(seq 1 120); do
-            ros2 topic list | grep -q "^${t}$" && break || sleep 0.5
-          done
-        done
-        echo "[localization] lanzando EKF en ns=/localization"
-        exec ros2 run robot_localization ekf_node \
-          --ros-args -r __ns:=/localization \
-          --params-file /config/ekf_odom.yaml \
-          --log-level robot_localization:=debug
+      - ./scripts/localization_entrypoint.sh:/entrypoint.sh:ro
     healthcheck:
       test: ["CMD-SHELL","bash -lc 'source /opt/ros/humble/setup.bash && ros2 node list | grep -q ^/localization/ekf_filter_node$'"]
       interval: 20s
