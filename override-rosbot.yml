@@ -1,0 +1,30 @@
+version: "3.9"
+services:
+  rosbot:
+    environment:
+      - ROS_DOMAIN_ID=0
+      - AMENT_TRACE_SETUP_FILES=
+    command: >
+      bash -lc '
+        # 1) Carga entorno ROS (sin set -u para evitar "unbound variable")
+        source /opt/ros/humble/setup.bash;
+
+        # 2) Lanza el bringup en background
+        ros2 launch rosbot_xl_bringup bringup.launch.py \
+          mecanum:=$${MECANUM:-True} \
+          depthai_params_file:=/config/oak_1080p.yaml &
+        LAUNCH_PID=$!;
+
+        # 3) Espera a controller_manager y spawnea controladores
+        until ros2 service list | grep -q "/controller_manager/switch_controller"; do sleep 0.5; done
+        ros2 run controller_manager spawner joint_state_broadcaster \
+            -c /controller_manager --controller-manager-timeout 20 || true
+        ros2 run controller_manager spawner rosbot_xl_base_controller \
+            -c /controller_manager --controller-manager-timeout 20 || true
+
+        # 4) Desactiva la TF del controlador (queremos que la publique SOLO el EKF)
+        ros2 param set /rosbot_xl_base_controller enable_odom_tf false || true
+
+        # 5) Mantén el contenedor vivo
+        wait $LAUNCH_PID
+      '
