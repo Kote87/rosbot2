@@ -143,14 +143,15 @@ _install-yq:
 
 teleop:
     @echo "Starting sensors + SLAM + teleop…"
-    docker compose -f compose.yaml -f docker-compose.override.yml up -d
+    docker compose -f compose.yaml -f docker-compose.override.yml up -d \
+      rosbot rplidar navigation teleop foxglove foxglove-ds path_tools
     @echo ""
     @echo "╭───────────────────────────────────────────"
     @echo "│  TELEOP  (W/S = adelante/atrás)"
     @echo "│          A/D = girar;  Q/E = giro suave"
     @echo "│  Salir sin matar:  Ctrl-P  Ctrl-Q"
     @echo "╰───────────────────────────────────────────"
-    docker attach $(docker compose -f compose.yaml -f docker-compose.override.yml ps -q teleop)
+    docker attach $$(docker compose -f compose.yaml -f docker-compose.override.yml ps -q teleop)
 
 # ------------------ Rutas grabadas ---------------------------------
 

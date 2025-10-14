@@ -30,6 +30,10 @@ done
 echo "[localization] lanzando EKF en ns=/localization (nodo por defecto: ekf_filter_node)"
 # (opcional) traza rápida de TF para verificar que el EKF publica algo al arrancar
 ( timeout 8s ros2 topic echo /tf | egrep -i "frame_id|child_frame_id" || true ) &
+
+# Desactiva la TF de odometría del base_controller para evitar duplicados
+ros2 param set /rosbot_xl_base_controller enable_odom_tf false || true
+
 exec ros2 run robot_localization ekf_node \
   --ros-args -r __ns:=/localization \
   --params-file /config/ekf_odom.yaml \
