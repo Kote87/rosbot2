@@ -142,21 +142,27 @@ _install-yq:
     fi
 
 teleop:
-    @echo "Starting sensors + SLAM + teleop…"
+    #!/bin/bash
+    set -euo pipefail
+
+    echo "Starting sensors + SLAM + teleop…"
     docker compose -f compose.yaml -f docker-compose.override.yml up -d \
-      rosbot rplidar navigation teleop foxglove foxglove-ds path_tools
-    @echo ""
-    @echo "╭───────────────────────────────────────────"
-    @echo "│  TELEOP  (W/S = adelante/atrás)"
-    @echo "│          A/D = girar;  Q/E = giro suave"
-    @echo "│  Salir sin matar:  Ctrl-P  Ctrl-Q"
-    @echo "╰───────────────────────────────────────────"
-    @container_id=$$(docker compose -f compose.yaml -f docker-compose.override.yml ps -q teleop)
-    @if [ -z "$$container_id" ]; then \
-        echo "⛔  contenedor 'teleop' no está en ejecución"; \
-        exit 1; \
+        rosbot rplidar navigation teleop foxglove foxglove-ds path_tools
+
+    echo
+    echo "╭───────────────────────────────────────────"
+    echo "│  TELEOP  (W/S = adelante/atrás)"
+    echo "│          A/D = girar;  Q/E = giro suave"
+    echo "│  Salir sin matar:  Ctrl-P  Ctrl-Q"
+    echo "╰───────────────────────────────────────────"
+
+    container_id=$(docker compose -f compose.yaml -f docker-compose.override.yml ps -q teleop)
+    if [[ -z "${container_id}" ]]; then
+        echo "⛔  contenedor 'teleop' no está en ejecución"
+        exit 1
     fi
-    docker attach $$container_id
+
+    docker attach "${container_id}"
 
 # ------------------ Rutas grabadas ---------------------------------
 
