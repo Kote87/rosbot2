@@ -167,7 +167,7 @@ controller_server:
       stateful: true
       plugin: nav2_controller::SimpleGoalChecker
       xy_goal_tolerance: 0.10
-      yaw_goal_tolerance: 0.25
+      yaw_goal_tolerance: 0.20
     # DWB parameters
     FollowPath:
       plugin: dwb_core::DWBLocalPlanner
@@ -196,16 +196,16 @@ controller_server:
       angular_granularity: 0.1
       transform_tolerance: 0.25
       xy_goal_tolerance: 0.2
-      trans_stopped_velocity: 0.25
+      trans_stopped_velocity: 0.02
       short_circuit_trajectory_evaluation: true
       stateful: true
       critics: [RotateToGoal, Oscillation, BaseObstacle, GoalAlign, PathAlign, PathDist, GoalDist]
-      BaseObstacle.scale: 0.10
+      BaseObstacle.scale: 0.5
       PathAlign.scale: 32.0
       PathAlign.forward_point_distance: 0.1
       GoalAlign.scale: 24.0
       GoalAlign.forward_point_distance: 0.1
-      PathDist.scale: 32.0
+      PathDist.scale: 24.0
       GoalDist.scale: 12.0
       RotateToGoal.scale: 32.0
       RotateToGoal.slowing_factor: 1.3
@@ -223,7 +223,8 @@ local_costmap:
       width: 2
       height: 2
       resolution: 0.04
-      robot_radius: 0.16
+      robot_radius: 0.20
+      footprint_padding: 0.01
       plugins: [static_layer, obstacle_layer, inflation_layer]
       static_layer:
         plugin: nav2_costmap_2d::StaticLayer
@@ -245,8 +246,8 @@ local_costmap:
           max_obstacle_height: 2.0
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
-        cost_scaling_factor: 5.0
-        inflation_radius: 0.30
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.25
 
       always_send_full_costmap: true
 
@@ -258,7 +259,8 @@ global_costmap:
       global_frame: map
       robot_base_frame: base_link
       use_sim_time: false
-      robot_radius: 0.16
+      robot_radius: 0.20
+      footprint_padding: 0.01
       resolution: 0.05
       track_unknown_space: true
       plugins: [static_layer, obstacle_layer, inflation_layer]
