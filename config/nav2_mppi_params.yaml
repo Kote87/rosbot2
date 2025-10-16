@@ -224,10 +224,10 @@ local_costmap:
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
         enabled: true
-        inflation_radius: 0.22
-        cost_scaling_factor: 3.0
+        inflation_radius: 0.12
+        cost_scaling_factor: 8.0
       robot_radius: 0.18
-      footprint_padding: 0.05
+      footprint_padding: 0.005
 
       always_send_full_costmap: true
 
@@ -271,8 +271,8 @@ global_costmap:
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
         enabled: true
-        inflation_radius: 0.35
-        cost_scaling_factor: 3.0
+        inflation_radius: 0.14
+        cost_scaling_factor: 10.0
       footprint: '[[0.165, 0.145], [0.165, -0.145], [-0.165, -0.145], [-0.165, 0.145]]'
       robot_radius: 0.0
       footprint_padding: 0.02
