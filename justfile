@@ -211,7 +211,7 @@ start-route ruta="mi_ruta":
 ## ───────────────────────────────────────────────────────────────
 start-ntp ruta="mi_ruta":
     # 1) Levanta solo compose.yaml (sin override ⇒ no teleop)
-    @SLAM=True docker compose -f compose.yaml up -d
+    @SLAM=False docker compose -f compose.yaml up -d
 
     # 2) Espera a Nav2 'healthy'
     @echo "⌛  Esperando a Nav2..."
