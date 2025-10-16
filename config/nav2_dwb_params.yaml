@@ -244,8 +244,8 @@ local_costmap:
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
         enabled: true
-        inflation_radius: 0.25
-        cost_scaling_factor: 2.5
+        inflation_radius: 0.10
+        cost_scaling_factor: 7.5
 
       always_send_full_costmap: true
 
@@ -262,13 +262,13 @@ global_costmap:
       footprint_padding: 0.005
       resolution: 0.05
       track_unknown_space: true
-      plugins: [static_layer, inflation_layer]
+      plugins: [static_layer, obstacle_layer, inflation_layer]
       static_layer:
         plugin: nav2_costmap_2d::StaticLayer
         map_subscribe_transient_local: true
       obstacle_layer:
         plugin: nav2_costmap_2d::ObstacleLayer
-        enabled: false
+        enabled: true
         footprint_clearing_enabled: true
         observation_sources: scan
         scan:
@@ -283,8 +283,8 @@ global_costmap:
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
         enabled: true
-        inflation_radius: 0.20
-        cost_scaling_factor: 3.0
+        inflation_radius: 0.10
+        cost_scaling_factor: 7.5
       always_send_full_costmap: true
 
 map_server:

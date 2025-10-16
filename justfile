@@ -175,8 +175,7 @@ play-ntp name:
     docker exec -it $(docker compose ps -q path_tools) \
         bash -c "source /opt/ros/humble/setup.bash && \
                  python3 /scripts/nav_through_poses.py \
-                 --file /routes/{{name}}.yaml \
-                 --set-initialpose first"
+                 --file /routes/{{name}}.yaml"
 # ────────────────────────────────────────────────────────────────
 #  start-route  →  Arranca ROSbot con mapa fijo y reproduce una ruta
 #     Uso:  just start-route mi_ruta        # (omite la extensión .yaml)
