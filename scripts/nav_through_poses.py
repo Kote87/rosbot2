@@ -2,7 +2,7 @@
 import sys, math, yaml, rclpy, signal
 from rclpy.node import Node
 from rclpy.action import ActionClient
-from geometry_msgs.msg import PoseStamped, Quaternion
+from geometry_msgs.msg import PoseStamped, Quaternion, PoseWithCovarianceStamped
 from builtin_interfaces.msg import Time as TimeMsg
 from nav2_msgs.action import NavigateThroughPoses
 
@@ -13,12 +13,15 @@ def q_from_yaw(yaw: float):
 
 
 class NTPClient(Node):
-    def __init__(self, yaml_file: str, frame_id: str = "map"):
+    def __init__(self, yaml_file: str, frame_id: str = "map", set_initialpose: str = "none"):
         super().__init__("nav_through_poses_client")
         self._shutdown_called = False
         self._ac = ActionClient(self, NavigateThroughPoses, "/navigate_through_poses")
         self._poses = self._load_yaml(yaml_file, frame_id)
+        self._init_pub = self.create_publisher(PoseWithCovarianceStamped, "/initialpose", 1)
+        self._set_initialpose = set_initialpose
         self.get_logger().info(f"Leyendo {yaml_file} – {len(self._poses)} puntos (NTP)")
+        self._maybe_publish_initialpose()
         self._send_goal()
 
     def _load_yaml(self, path, frame_id):
@@ -36,6 +39,23 @@ class NTPClient(Node):
         if not poses:
             raise RuntimeError("El YAML no contiene 'waypoints'.")
         return poses
+
+    def _publish_initialpose(self, ps: PoseStamped):
+        m = PoseWithCovarianceStamped()
+        m.header.frame_id = ps.header.frame_id
+        m.header.stamp = self.get_clock().now().to_msg()
+        m.pose.pose = ps.pose
+        m.pose.covariance[0] = 0.25
+        m.pose.covariance[7] = 0.25
+        m.pose.covariance[35] = 0.12
+        self._init_pub.publish(m)
+        self.get_logger().info("📍  initialpose publicado")
+
+    def _maybe_publish_initialpose(self):
+        if self._set_initialpose == "first":
+            self._publish_initialpose(self._poses[0])
+        elif self._set_initialpose == "zero":
+            self._publish_initialpose(self._mk_pose(self._poses[0].header.frame_id, 0.0, 0.0, 0.0))
 
     def _send_goal(self):
         self.get_logger().info("🚀  Esperando servidor /navigate_through_poses …")
@@ -74,6 +94,16 @@ class NTPClient(Node):
             )
         )
 
+    @staticmethod
+    def _mk_pose(frame_id, x, y, yaw):
+        ps = PoseStamped()
+        ps.header.frame_id = frame_id
+        ps.pose.position.x = float(x)
+        ps.pose.position.y = float(y)
+        q = q_from_yaw(float(yaw))
+        ps.pose.orientation = Quaternion(x=q[0], y=q[1], z=q[2], w=q[3])
+        return ps
+
     def _safe_shutdown(self):
         if self._shutdown_called:
             return
@@ -87,7 +117,7 @@ class NTPClient(Node):
 def main():
     if "--file" not in sys.argv:
         print(
-            "Uso: nav_through_poses.py --file /routes/mi_ruta.yaml [--frame map]",
+            "Uso: nav_through_poses.py --file /routes/mi_ruta.yaml [--frame map] [--set-initialpose first|zero|none]",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -95,8 +125,14 @@ def main():
     frame = "map"
     if "--frame" in sys.argv:
         frame = sys.argv[sys.argv.index("--frame") + 1]
+    set_ip = "none"
+    if "--set-initialpose" in sys.argv:
+        set_ip = sys.argv[sys.argv.index("--set-initialpose") + 1]
+        if set_ip not in ("first", "zero", "none"):
+            print("--set-initialpose debe ser first|zero|none", file=sys.stderr)
+            sys.exit(2)
     rclpy.init()
-    node = NTPClient(yaml_file, frame)
+    node = NTPClient(yaml_file, frame, set_ip)
     # Ctrl-C → cancelación limpia sin 'double shutdown'
     signal.signal(signal.SIGINT, lambda *_: node._safe_shutdown())
     try:
