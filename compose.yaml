@@ -63,7 +63,7 @@ services:
       rplidar: { condition: service_started }
       rosbot:  { condition: service_started }
     volumes:
-      - ./config/nav2_${CONTROLLER:-dwb}_params.yaml:/params.yaml
+      - ./config/nav2_${CONTROLLER:-mppi)_params.yaml:/params.yaml
       - ./maps:/maps
       - ./scripts:/ros2_ws/scripts:ro
     environment:
