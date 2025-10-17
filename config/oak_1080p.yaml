@@ -6,3 +6,5 @@
       i_publish_topic: false      # NO publicar preview
       i_enable_preview: false
       i_output_isp: true          # publicar ISP
+      i_isp_num: 1                # escala 1:1 (sin reducir a 720p)
+      i_isp_den: 1

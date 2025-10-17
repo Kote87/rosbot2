@@ -150,7 +150,68 @@ teleop:
     @echo "│          A/D = girar;  Q/E = giro suave"
     @echo "│  Salir sin matar:  Ctrl-P  Ctrl-Q"
     @echo "╰───────────────────────────────────────────"
+    # Abrimos la cámara en paralelo (comprimida)
+    @bash -lc '( source /opt/ros/humble/setup.bash; just camera-oak ) >/dev/null 2>&1 &' || true
     docker attach $(docker compose -f compose.yaml -f docker-compose.override.yml ps -q teleop)
+
+# ────────────────────────────────────────────────────────────────
+#  Cámara OAK-D Pro: visor en host (pantalla HDMI) comprimido
+#    • Espera a que exista el tópico y abre rqt_image_view en 2º plano
+#    • Controles: Ctrl+1 = zoom 1:1, F11 = pantalla completa
+# ────────────────────────────────────────────────────────────────
+camera-oak topic="/oak/rgb/image" transport="compressed": _run-as-user
+    #!/bin/bash
+    set -e
+    # Nos aseguramos de tener el entorno ROS 2 en el HOST
+    source /opt/ros/humble/setup.bash || true
+    # Espera hasta que rosbot esté arriba y publique imagen
+    for i in $(seq 1 30); do
+        if ros2 topic list | grep -q "{{topic}}"; then break; fi
+        sleep 1
+    done
+    # Lanza el visor y lo desancla de la terminal
+    (
+        rqt_image_view \
+            --ros-args \
+            -p image:={{topic}} \
+            -p image_transport:={{transport}} \
+        >/tmp/rqt_image_view.log 2>&1 & disown
+    )
+    echo "OAK-D Pro → {{topic}} ({{transport}}).  Controles: Ctrl+1 (1:1), F11 (fullscreen)"
+
+# ────────────────────────────────────────────────────────────────
+#  Helper: arranca NTP con un MAP concreto (usa tu start-ntp)
+# ────────────────────────────────────────────────────────────────
+_run-route-with-map ruta map: _run-as-user
+    #!/bin/bash
+    set -e
+    MAP={{map}} just start-ntp {{ruta}}
+
+# ────────────────────────────────────────────────────────────────
+#  Atajos directos pedidos (mapa + ruta + cámara)
+#   socis1 → ruta socis1  con mapa msocis1
+#   socis2 → ruta socis2  con mapa msocis2
+#   socis3 → ruta socis2* con mapa msocis3   (*tal como pediste)
+# ────────────────────────────────────────────────────────────────
+socis1: _run-as-user
+    #!/bin/bash
+    echo "SOCIS1: mapa=msocis1, ruta=socis1"
+    # Abre visor en paralelo
+    ( just camera-oak >/dev/null 2>&1 & )
+    # Lanza navegación + NTP con el mapa correcto
+    just _run-route-with-map socis1 msocis1
+
+socis2: _run-as-user
+    #!/bin/bash
+    echo "SOCIS2: mapa=msocis2, ruta=socis2"
+    ( just camera-oak >/dev/null 2>&1 & )
+    just _run-route-with-map socis2 msocis2
+
+socis3: _run-as-user
+    #!/bin/bash
+    echo "SOCIS3: mapa=msocis3, ruta=socis2 (según tu indicación)"
+    ( just camera-oak >/dev/null 2>&1 & )
+    just _run-route-with-map socis2 msocis3
 
 # ------------------ Rutas grabadas ---------------------------------
 
