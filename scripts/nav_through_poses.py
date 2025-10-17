@@ -2,7 +2,7 @@
 import sys, math, yaml, rclpy, signal
 from rclpy.node import Node
 from rclpy.action import ActionClient
-from geometry_msgs.msg import PoseStamped, Quaternion
+from geometry_msgs.msg import PoseStamped, Quaternion, PoseWithCovarianceStamped
 from builtin_interfaces.msg import Time as TimeMsg
 from nav2_msgs.action import NavigateThroughPoses
 
@@ -18,7 +18,11 @@ class NTPClient(Node):
         self._shutdown_called = False
         self._ac = ActionClient(self, NavigateThroughPoses, "/navigate_through_poses")
         self._poses = self._load_yaml(yaml_file, frame_id)
+        self._init_pub = self.create_publisher(
+            PoseWithCovarianceStamped, "/initialpose", 1
+        )
         self.get_logger().info(f"Leyendo {yaml_file} – {len(self._poses)} puntos (NTP)")
+        self._publish_initialpose(self._poses[0])  # coloca AMCL en celda libre (1er waypoint)
         self._send_goal()
 
     def _load_yaml(self, path, frame_id):
@@ -36,6 +40,25 @@ class NTPClient(Node):
         if not poses:
             raise RuntimeError("El YAML no contiene 'waypoints'.")
         return poses
+
+    def _publish_initialpose(self, ps: PoseStamped):
+        m = PoseWithCovarianceStamped()
+        m.header.frame_id = ps.header.frame_id
+        m.header.stamp = self.get_clock().now().to_msg()
+        m.pose.pose = ps.pose
+        # covarianzas moderadas (evita "clavar" demasiado la pose)
+        m.pose.covariance[0] = 0.25  # var(x)
+        m.pose.covariance[7] = 0.25  # var(y)
+        m.pose.covariance[35] = 0.12  # var(yaw)
+        # Publica 2 veces separadas 100 ms para esquivar condiciones de carrera con AMCL
+        self._init_pub.publish(m)
+        self.create_timer(
+            0.10,
+            lambda: (
+                self._init_pub.publish(m),
+                self.get_logger().info("📍 initialpose publicado"),
+            ),
+        )
 
     def _send_goal(self):
         self.get_logger().info("🚀  Esperando servidor /navigate_through_poses …")
