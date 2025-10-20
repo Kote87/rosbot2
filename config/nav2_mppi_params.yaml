@@ -120,10 +120,10 @@ bt_navigator_rclcpp_node:
 controller_server:
   ros__parameters:
     use_sim_time: false
-    controller_frequency: 20.0
+    controller_frequency: 30.0
     min_x_velocity_threshold: 0.01    # Measured
     min_y_velocity_threshold: 0.01    # Measured
-    min_theta_velocity_threshold: 0.1 # Measured
+    min_theta_velocity_threshold: 0.02
     progress_checker_plugin: progress_checker
     goal_checker_plugin: goal_checker
     general_goal_checker:
@@ -154,12 +154,12 @@ controller_server:
       batch_size: 800
       vx_std: 0.2
       vy_std: 0.0
-      wz_std: 0.35
+      wz_std: 0.60
       vx_max: 0.3
-      vx_min: -0.2
+      vx_min: 0.0            # prohibe retroceder en el seguidor de trayectoria
       vy_max: 0.0
-      wz_max: 0.7
-      iteration_count: 1
+      wz_max: 1.2            # más autoridad de giro
+      iteration_count: 2     # mejora la calidad del control
       prune_distance: 1.8
       transform_tolerance: 0.25
       temperature: 0.3
@@ -180,14 +180,14 @@ controller_server:
       ObstaclesCritic:
         weight: 5.0
         consider_footprint: true
-        collision_margin_distance: 0.10
+        collision_margin_distance: 0.06   # permite pivotar más cerca de pared
 
       PathAlignCritic:   {weight: 10.0}
       PathFollowCritic:  {weight: 6.0}
       GoalCritic:        {weight: 3.0}
-      PreferForwardCritic: {weight: 5.0}
+      PreferForwardCritic: {weight: 2.0}  # ya prohibimos vx<0, no hace falta forzar más
       ConstraintCritic:  {weight: 1.0}
-      TwirlingCritic:    {weight: 2.0}
+      TwirlingCritic:    {weight: 0.2}    # menos penalización a girar in-place
 
 controller_server_rclcpp_node:
   ros__parameters:
@@ -448,7 +448,7 @@ velocity_smoother:
   ros__parameters:
     use_sim_time: false
 
-    smoothing_frequency: 5.0
+    smoothing_frequency: 20.0
     scale_velocities: false
     feedback: OPEN_LOOP
     max_velocity: [0.5, 0.0, 1.5]   # Measured: MAX[1.0, 0.0, 3.14] (decreased for safety)
@@ -457,6 +457,6 @@ velocity_smoother:
     max_decel: [-1.0, 0.0, -3.2]  # Measured
     # used in the CLOSED_LOOP feedback mode
     # odom_topic: "odometry/filtered"
-    odom_duration: 0.1
-    deadband_velocity: [0.01, 0.01, 0.1] # Measured
+    odom_duration: 0.05
+    deadband_velocity: [0.005, 0.0, 0.02]
     velocity_timeout: 1.0
