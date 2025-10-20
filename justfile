@@ -211,7 +211,7 @@ socis3: _run-as-user
     #!/bin/bash
     echo "SOCIS3: mapa=msocis3, ruta=socis3 (según tu indicación)"
     ( just camera-oak >/dev/null 2>&1 & )
-    just _run-route-with-map socis2 msocis3
+    just _run-route-with-map socis3 msocis3
 
 # ------------------ Rutas grabadas ---------------------------------
 
