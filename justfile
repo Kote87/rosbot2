@@ -209,7 +209,7 @@ socis2: _run-as-user
 
 socis3: _run-as-user
     #!/bin/bash
-    echo "SOCIS3: mapa=msocis3, ruta=socis2 (según tu indicación)"
+    echo "SOCIS3: mapa=msocis3, ruta=socis3 (según tu indicación)"
     ( just camera-oak >/dev/null 2>&1 & )
     just _run-route-with-map socis2 msocis3
 
