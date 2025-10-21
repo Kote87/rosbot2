@@ -88,6 +88,7 @@ bt_navigator:
     navigate_through_poses:
       plugin: nav2_bt_navigator/NavigateThroughPosesNavigator
     plugin_lib_names:
+      - nav2_smooth_path_action_bt_node
       - nav2_compute_path_to_pose_action_bt_node
       - nav2_follow_path_action_bt_node
       - nav2_back_up_action_bt_node
@@ -155,12 +156,12 @@ controller_server:
       vx_std: 0.2
       vy_std: 0.0
       wz_std: 0.60
-      vx_max: 0.3
-      vx_min: 0.0            # prohibe retroceder en el seguidor de trayectoria
+      vx_max: 0.25                 # menos “empuje” al entrar en el giro
+      vx_min: -0.05                # permite micro‑retroceso para pivotar
       vy_max: 0.0
       wz_max: 1.2            # más autoridad de giro
       iteration_count: 2     # mejora la calidad del control
-      prune_distance: 1.8
+      prune_distance: 1.0          # conserva más puntos cercanos al giro
       transform_tolerance: 0.25
       temperature: 0.3
       gamma: 0.015
@@ -180,14 +181,14 @@ controller_server:
       ObstaclesCritic:
         weight: 5.0
         consider_footprint: true
-        collision_margin_distance: 0.06   # permite pivotar más cerca de pared
+        collision_margin_distance: 0.10   # margen realista en esquinas
 
-      PathAlignCritic:   {weight: 10.0}
-      PathFollowCritic:  {weight: 6.0}
-      GoalCritic:        {weight: 3.0}
-      PreferForwardCritic: {weight: 2.0}  # ya prohibimos vx<0, no hace falta forzar más
+      PathAlignCritic:   {weight: 16.0}   # entra antes a orientar el rumbo
+      PathFollowCritic:  {weight: 5.0}
+      GoalCritic:        {weight: 4.0}
+      PreferForwardCritic: {weight: 3.0}
       ConstraintCritic:  {weight: 1.0}
-      TwirlingCritic:    {weight: 0.2}    # menos penalización a girar in-place
+      TwirlingCritic:    {weight: 0.5}    # permite pivotar, sin sobre‑girar
 
 controller_server_rclcpp_node:
   ros__parameters:
@@ -206,7 +207,12 @@ local_costmap:
       width: 4
       height: 4
       resolution: 0.04
-      plugins: [obstacle_layer, inflation_layer]
+      plugins: [static_layer, obstacle_layer, inflation_layer]
+      static_layer:
+        plugin: nav2_costmap_2d::StaticLayer
+        enabled: true
+        map_subscribe_transient_local: true
+        combination_method: Maximum
       obstacle_layer:
         plugin: nav2_costmap_2d::ObstacleLayer
         enabled: true
