@@ -149,9 +149,9 @@ controller_server:
     min_theta_velocity_threshold: 0.001
     failure_tolerance: 0.3
     progress_checker_plugin: progress_checker
-    goal_checker_plugins: [general_goal_checker]   # "precise_goal_checker"
-    # Selecciona explícitamente el plugin de goal checker activo y quita el warning
-    current_goal_checker: general_goal_checker
+    goal_checker_plugins: [general_goal_checker, goal_checker]   # "precise_goal_checker"
+    # Selecciona explícitamente el goal checker activo
+    current_goal_checker: goal_checker
     controller_plugins: [FollowPath]
 
     # Progress checker parameters
@@ -166,10 +166,15 @@ controller_server:
     #  yaw_goal_tolerance: 0.25
     #  stateful: True
     general_goal_checker:
-      stateful: true
       plugin: nav2_controller::SimpleGoalChecker
       xy_goal_tolerance: 0.50
       yaw_goal_tolerance: 0.60
+      stateful: true
+    goal_checker:
+      plugin: "nav2_controller::SimpleGoalChecker"
+      xy_goal_tolerance: 0.35
+      yaw_goal_tolerance: 0.35
+      stateful: true
     # DWB parameters
     FollowPath:
       plugin: dwb_core::DWBLocalPlanner
