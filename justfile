@@ -195,11 +195,11 @@ _run-route-with-map ruta map: _run-as-user
 # ────────────────────────────────────────────────────────────────
 socis1: _run-as-user
     #!/bin/bash
-    echo "SOCIS1: mapa=msocis1, ruta=socis1"
+    echo "SOCIS1: mapa=msocis, ruta=socis1"
     # Abre visor en paralelo
     ( just camera-oak >/dev/null 2>&1 & )
     # Lanza navegación + NTP con el mapa correcto
-    just _run-route-with-map socis1 msocis1
+    just _run-route-with-map socis1 msocis
 
 socis2: _run-as-user
     #!/bin/bash
