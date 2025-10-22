@@ -130,7 +130,7 @@ controller_server:
       plugin: "nav2_controller::SimpleGoalChecker"
       xy_goal_tolerance: 0.35
       yaw_goal_tolerance: 0.35
-      stateful: false
+      stateful: true
     controller_plugins: [FollowPath]
 
     # Progress checker parameters
@@ -144,7 +144,7 @@ controller_server:
       plugin: nav2_controller::SimpleGoalChecker
       xy_goal_tolerance: 0.35
       yaw_goal_tolerance: 0.35
-      stateful: false
+      stateful: true
 
     # MPPI controller
     FollowPath:
