@@ -126,6 +126,8 @@ controller_server:
     min_theta_velocity_threshold: 0.1 # Measured
     progress_checker_plugin: progress_checker
     goal_checker_plugin: goal_checker
+    # Selecciona explícitamente el plugin de goal checker activo y quita el warning
+    current_goal_checker: goal_checker
     general_goal_checker:
       plugin: "nav2_controller::SimpleGoalChecker"
       xy_goal_tolerance: 0.35
