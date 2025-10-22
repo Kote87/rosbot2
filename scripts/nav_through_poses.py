@@ -5,7 +5,6 @@ from rclpy.action import ActionClient
 from geometry_msgs.msg import PoseStamped, Quaternion
 from builtin_interfaces.msg import Time as TimeMsg
 from nav2_msgs.action import NavigateThroughPoses
-import os
 
 
 def q_from_yaw(yaw: float):
@@ -48,14 +47,7 @@ class NTPClient(Node):
 
         goal = NavigateThroughPoses.Goal()
         goal.poses = self._poses
-        # Fuerza un BT que no hace GoalReached al principio (evita éxito instantáneo)
-        bt_file = "/scripts/bt/ntp_force_follow.xml"
-        if os.path.exists(bt_file):
-            goal.behavior_tree = bt_file
-            self.get_logger().info(f"Usando BT NTP forzado: {bt_file}")
-        else:
-            goal.behavior_tree = ""  # fallback: BT por defecto
-            self.get_logger().warn("BT forzado no encontrado; usando BT por defecto")
+        goal.behavior_tree = ""  # usa BT por defecto de NTP del bringup
 
         self.get_logger().info("🚀  Enviando acción /navigate_through_poses …")
         sfut = self._ac.send_goal_async(goal, feedback_callback=self._on_feedback)
