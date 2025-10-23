@@ -30,6 +30,7 @@ class NTPClient(Node):
         detect_xy: float = 0.30,
         detect_yaw: float = 0.35,
         force_stateful: bool = True,
+        bt_file: str = "",
     ):
         super().__init__("nav_through_poses_client")
         self._shutdown_called = False
@@ -40,6 +41,7 @@ class NTPClient(Node):
         self._premove_dist = premove_dist
         self._detect_xy = detect_xy
         self._detect_yaw = detect_yaw
+        self._bt_file = bt_file
         self.get_logger().info(f"Leyendo {yaml_file} – {len(self._poses)} puntos (NTP)")
         if force_stateful:
             self._ensure_stateful_goalchecker()
@@ -72,7 +74,8 @@ class NTPClient(Node):
 
         goal = NavigateThroughPoses.Goal()
         goal.poses = self._poses
-        goal.behavior_tree = ""  # usa BT por defecto de NTP del bringup
+        # Si nos pasan un BT, úsalo; si no, deja el del bringup
+        goal.behavior_tree = self._bt_file if self._bt_file else ""
 
         self.get_logger().info("🚀  Enviando acción /navigate_through_poses …")
         sfut = self._ac_ntp.send_goal_async(goal, feedback_callback=self._on_feedback)
@@ -236,6 +239,11 @@ def main():
     ap.add_argument("--detect-xy", type=float, default=0.30)
     ap.add_argument("--detect-yaw", type=float, default=0.35)
     ap.add_argument(
+        "--bt",
+        default="",
+        help="Ruta absoluta a un BT .xml (opcional) para NTP",
+    )
+    ap.add_argument(
         "--force-stateful",
         action="store_true",
         default=True,
@@ -251,6 +259,7 @@ def main():
         detect_xy=args.detect_xy,
         detect_yaw=args.detect_yaw,
         force_stateful=args.force_stateful,
+        bt_file=args.bt,
     )
     # Ctrl-C → cancelación limpia sin 'double shutdown'
     signal.signal(signal.SIGINT, lambda *_: node._safe_shutdown())
