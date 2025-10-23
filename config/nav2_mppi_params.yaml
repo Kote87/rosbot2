@@ -127,7 +127,8 @@ controller_server:
     progress_checker_plugin: progress_checker
     goal_checker_plugin: goal_checker
     # Selecciona explícitamente el goal checker activo
-    current_goal_checker: goal_checker
+    current_goal_checker: goal_checker  # quita el warning y fija el plugin
+    # SimpleGoalChecker
     general_goal_checker:
       plugin: "nav2_controller::SimpleGoalChecker"
       xy_goal_tolerance: 0.35
