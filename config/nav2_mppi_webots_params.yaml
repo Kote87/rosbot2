@@ -138,8 +138,8 @@ controller_server:
     # Goal checker parameters
     goal_checker:
       plugin: nav2_controller::SimpleGoalChecker
-      xy_goal_tolerance: 0.15
-      yaw_goal_tolerance: 0.25
+      xy_goal_tolerance: 0.08
+      yaw_goal_tolerance: 0.15
       stateful: true
 
     # MPPI controller

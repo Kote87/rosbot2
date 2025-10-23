@@ -293,13 +293,13 @@ start-ntp ruta="mi_ruta":
 
     # 2c) Verifica que los costmaps están suscritos a /scan_filtered
     @docker compose exec navigation bash -lc 'python3 /ros2_ws/scripts/nav2_guard.py'
-    # 2d) Instala BT mínimo para NTP (evita éxito inmediato al inicio)
+    # 2d) Espera a TF base_link→odom antes de lanzar el script
+    @docker compose exec navigation bash -lc 'source /opt/ros/humble/setup.bash && python3 /ros2_ws/scripts/wait_for_tf.py odom base_link --timeout 30'
+    # 2e) Instala BT mínimo para NTP (evita éxito inmediato al inicio)
     @docker compose exec navigation python3 -c 'from pathlib import Path; bt_dir = Path("/ros2_ws/bt"); bt_dir.mkdir(parents=True, exist_ok=True); bt_dir.joinpath("ntp_no_early_goal.xml").write_text("""<root main_tree_to_execute="MainTree">\n  <BehaviorTree ID="MainTree">\n    <Sequence name="ntp_no_early_goal">\n      <ComputePathThroughPoses goals="{goals}" path="{path}"/>\n      <FollowPath path="{path}"/>\n      <GoalReached/>\n    </Sequence>\n  </BehaviorTree>\n</root>\n""")'
 
     # 3) Lanza NTP dentro de path_tools
     @just play-ntp {{ruta}}
-
-    @printf $'5) Afinados recomendados (opcionales)\n\nTolerancias: si quieres hacerlo "más difícil" de cantar meta (incluso con el BT mínimo), baja tolerancias en tus YAML (xy_goal_tolerance: 0.08, yaw_goal_tolerance: 0.15) en ambos plugins (goal_checker y general_goal_checker). Esto no es imprescindible con el BT, pero endurece el cierre.\n\nTF al arranque: los avisos de Timed out waiting for transform base_link→odom sólo al inicio son normales, pero si quieres evitar sustos, puedes añadir una espera activa a TF en start-ntp antes de lanzar el script (igual que ya esperas a las acciones). Tu layout y herramientas ya pintan /plan, /unsmoothed_plan, /goal_pose, etc., así que es fácil ver que está funcionando.\n'
 
 # ────────────────────────────────────────────────────────────────
 #  ruta1  →  atajo sin parámetros. Equivale a:
