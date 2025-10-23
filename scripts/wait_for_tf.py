@@ -27,10 +27,8 @@ class TFWaiter(Node):
         deadline: Optional[Duration] = None if timeout <= 0 else Duration(seconds=float(timeout))
         start_time = self.get_clock().now()
         self.get_logger().info(
-            "Esperando TF %s → %s (timeout %.1f s)...",
-            self._source_frame,
-            self._target_frame,
-            timeout,
+            f"Esperando TF {self._source_frame} → {self._target_frame} "
+            f"(timeout {timeout:.1f} s)..."
         )
         while rclpy.ok():
             rclpy.spin_once(self, timeout_sec=0.1)
@@ -41,17 +39,15 @@ class TFWaiter(Node):
                     rclpy.time.Time(),
                 )
                 self.get_logger().info(
-                    "TF %s → %s disponible.", self._source_frame, self._target_frame
+                    f"TF {self._source_frame} → {self._target_frame} disponible."
                 )
                 return True
             except (LookupException, ConnectivityException, ExtrapolationException):
                 if deadline is not None and self.get_clock().now() - start_time > deadline:
                     break
         self.get_logger().error(
-            "TF %s → %s no disponible tras %.1f s.",
-            self._source_frame,
-            self._target_frame,
-            timeout,
+            f"TF {self._source_frame} → {self._target_frame} "
+            f"no disponible tras {timeout:.1f} s."
         )
         return False
 
