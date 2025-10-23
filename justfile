@@ -237,7 +237,8 @@ play-ntp name:
         bash -c "source /opt/ros/humble/setup.bash && \
                  python3 /scripts/nav_through_poses.py \
                  --file /routes/{{name}}.yaml \
-                 --pre auto --force-stateful"
+                 --pre auto --force-stateful \
+                 --bt /ros2_ws/bt/ntp_no_early_goal.xml"
 # ────────────────────────────────────────────────────────────────
 #  start-route  →  Arranca ROSbot con mapa fijo y reproduce una ruta
 #     Uso:  just start-route mi_ruta        # (omite la extensión .yaml)
@@ -292,6 +293,8 @@ start-ntp ruta="mi_ruta":
 
     # 2c) Verifica que los costmaps están suscritos a /scan_filtered
     @docker compose exec navigation bash -lc 'python3 /ros2_ws/scripts/nav2_guard.py'
+    # 2d) Instala BT mínimo para NTP (evita éxito inmediato al inicio)
+    @docker compose exec navigation bash -lc $'python3 - <<"PY"\nfrom pathlib import Path\nbt_dir = Path("/ros2_ws/bt")\nbt_dir.mkdir(parents=True, exist_ok=True)\n(bt_dir / "ntp_no_early_goal.xml").write_text("<root main_tree_to_execute=\"MainTree\">\n  <BehaviorTree ID=\"MainTree\">\n    <Sequence name=\"ntp_no_early_goal\">\n      <ComputePathThroughPoses goals=\"{goals}\" path=\"{path}\"/>\n      <FollowPath path=\"{path}\"/>\n      <GoalReached/>\n    </Sequence>\n  </BehaviorTree>\n</root>\n")\nPY'
 
     # 3) Lanza NTP dentro de path_tools
     @just play-ntp {{ruta}}
