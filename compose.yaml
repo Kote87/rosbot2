@@ -41,16 +41,13 @@ services:
   rplidar:
     image: husarion/rplidar:humble-1.0.1-20240104
     restart: unless-stopped
-    # RECOMENDADO: ponerlo también en host para simplificar descubrimiento
-    network_mode: host
     devices:
       - ${RPLIDAR_BYID:-/dev/ttyUSB0}:/dev/rplidar
     command: >
       ros2 launch /husarion_utils/rplidar.launch.py
         serial_port:=${RPLIDAR_PORT:-/dev/rplidar}
         serial_baudrate:=${LIDAR_BAUDRATE:-1000000}
-    environment:
-      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
+    environment: [ ROS_DOMAIN_ID=0 ]
     healthcheck:
       test: ["CMD-SHELL",
              "bash -c 'source /opt/ros/humble/setup.bash && ros2 topic list | grep -q ^/scan$'"]
@@ -62,8 +59,6 @@ services:
   navigation:
     image: husarion/navigation2:humble-1.1.12-20240123
     restart: unless-stopped
-    # <-- ESTE ES EL CAMBIO CRÍTICO
-    network_mode: host
     depends_on:
       rplidar: { condition: service_started }
       rosbot:  { condition: service_started }
@@ -72,7 +67,6 @@ services:
       - ./maps:/maps
       - ./scripts:/ros2_ws/scripts:ro
     environment:
-      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
       - MAP=${MAP:-r1}
     command: >
       ros2 launch /husarion_utils/bringup_launch.py
@@ -83,10 +77,9 @@ services:
 
   path_tools:
     image: husarion/navigation2:humble-1.1.12-20240123
-    network_mode: host              # para que vea a /navigate_through_poses sin fricción
+    network_mode: host
     restart: unless-stopped
-    environment:
-      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
+    environment: [ ROS_DOMAIN_ID=0 ]
     volumes:
       - ./routes:/routes
       - ./scripts:/scripts:ro
