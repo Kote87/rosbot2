@@ -264,6 +264,12 @@ start-route ruta="mi_ruta":
 
     # 2c) Verifica que los costmaps realmente están suscritos a /scan_filtered
     @docker compose exec navigation bash -lc 'python3 /ros2_ws/scripts/nav2_guard.py'
+    # 2d) Prueba que path_tools puede ver los servidores de acción Nav2
+    @docker compose exec path_tools bash -lc 'source /opt/ros/humble/setup.bash && python3 /scripts/nav2_action_probe.py'
+    # 2e) Preflight duro desde navigation (TF + costmaps + scan + lifecycle)
+    @docker compose exec navigation bash -lc 'source /opt/ros/humble/setup.bash && python3 /ros2_ws/scripts/nav2_preflight.py'
+    # 2f) Preflight de conectividad/vista DDS desde path_tools
+    @docker compose exec path_tools bash -lc 'source /opt/ros/humble/setup.bash && python3 /scripts/nav2_preflight.py'
 
     # 3) Lanza el reproductor de waypoints dentro de path_tools
     @just play-path {{ruta}}
@@ -293,9 +299,15 @@ start-ntp ruta="mi_ruta":
 
     # 2c) Verifica que los costmaps están suscritos a /scan_filtered
     @docker compose exec navigation bash -lc 'python3 /ros2_ws/scripts/nav2_guard.py'
-    # 2d) Espera a TF base_link→odom antes de lanzar el script
+    # 2d) Prueba que path_tools puede ver los servidores de acción Nav2
+    @docker compose exec path_tools bash -lc 'source /opt/ros/humble/setup.bash && python3 /scripts/nav2_action_probe.py'
+    # 2e) Preflight duro desde navigation (TF + costmaps + scan + lifecycle)
+    @docker compose exec navigation bash -lc 'source /opt/ros/humble/setup.bash && python3 /ros2_ws/scripts/nav2_preflight.py'
+    # 2f) Preflight de conectividad/vista DDS desde path_tools
+    @docker compose exec path_tools bash -lc 'source /opt/ros/humble/setup.bash && python3 /scripts/nav2_preflight.py'
+    # 2g) Espera a TF base_link→odom antes de lanzar el script
     @docker compose exec navigation bash -lc 'source /opt/ros/humble/setup.bash && python3 /ros2_ws/scripts/wait_for_tf.py odom base_link --timeout 30'
-    # 2e) Instala BT mínimo para NTP (evita éxito inmediato al inicio)
+    # 2h) Instala BT mínimo para NTP (evita éxito inmediato al inicio)
     @docker compose exec navigation python3 -c 'from pathlib import Path; bt_dir = Path("/ros2_ws/bt"); bt_dir.mkdir(parents=True, exist_ok=True); bt_dir.joinpath("ntp_no_early_goal.xml").write_text("""<root main_tree_to_execute="MainTree">\n  <BehaviorTree ID="MainTree">\n    <Sequence name="ntp_no_early_goal">\n      <ComputePathThroughPoses goals="{goals}" path="{path}"/>\n      <FollowPath path="{path}"/>\n      <GoalReached/>\n    </Sequence>\n  </BehaviorTree>\n</root>\n""")'
 
     # 3) Lanza NTP dentro de path_tools
