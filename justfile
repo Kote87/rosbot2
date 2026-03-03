@@ -143,6 +143,7 @@ _install-yq:
 
 teleop:
     @echo "Starting sensors + SLAM + teleop…"
+    mkdir -m 775 -p maps
     docker compose -f compose.yaml -f docker-compose.override.yml up -d
     @echo ""
     @echo "╭───────────────────────────────────────────"
