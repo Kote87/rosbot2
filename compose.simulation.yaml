@@ -40,7 +40,6 @@ services:
     restart: unless-stopped
     ports:
       - 8080:8080
-      - 8765:8765
     volumes:
       - ./config/layout.json:/foxglove/default-layout.json
     environment:
